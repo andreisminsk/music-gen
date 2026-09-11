@@ -30,16 +30,36 @@ echo "[1/8] Installing system dependencies..."
 apt-get update -qq
 apt-get install -y -qq ffmpeg flac > /dev/null 2>&1
 
-# --- Step 2: Conda environment ---
+# --- Step 2: Find and activate conda ---
 echo ""
-echo "[2/8] Creating conda environment: ${CONDA_ENV} (Python 3.10)..."
-if conda env list | grep -q "^${CONDA_ENV} "; then
-    echo "  Environment already exists, skipping."
+echo "[2/8] Setting up Python environment..."
+# Source conda if available (RunPod images have it but not in PATH)
+CONDA_SH=""
+for candidate in /root/miniconda3/etc/profile.d/conda.sh /opt/conda/etc/profile.d/conda.sh /home/*/miniconda3/etc/profile.d/conda.sh; do
+    if [ -f "$candidate" ]; then
+        CONDA_SH="$candidate"
+        break
+    fi
+done
+
+if [ -n "${CONDA_SH}" ]; then
+    echo "  Found conda at: ${CONDA_SH}"
+    source "${CONDA_SH}"
+    if conda env list | grep -q "^${CONDA_ENV} "; then
+        echo "  Environment ${CONDA_ENV} already exists, skipping."
+    else
+        conda create -n "${CONDA_ENV}" python=3.10 -y -q
+    fi
+    conda activate "${CONDA_ENV}"
 else
-    conda create -n "${CONDA_ENV}" python=3.10 -y -q
+    echo "  Conda not found, using system Python."
+    echo "  Creating venv at ${INSTALL_DIR}/.venv..."
+    PYTHON="$(which python3)"
+    ${PYTHON} -m venv "${INSTALL_DIR}/.venv"
+    source "${INSTALL_DIR}/.venv/bin/activate"
+    PYTHON="$(which python)"
+    PIP="$(which pip)"
 fi
-eval "$(conda shell.bash hook)"
-conda activate "${CONDA_ENV}"
 
 # --- Step 3: Clone repo ---
 echo ""
