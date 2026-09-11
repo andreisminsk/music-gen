@@ -1,0 +1,34 @@
+[project]
+name = "music-gen"
+version = "0.1.0"
+description = "YuE2 music generation app"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1",
+    "transformers>=4.57",
+    "huggingface-hub>=0.36",
+    "accelerate>=0.25",
+    "safetensors>=0.4",
+    "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+music-gen = "music_gen.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
