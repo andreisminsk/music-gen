@@ -27,16 +27,16 @@ OLLAMA_MODEL="${OLLAMA_MODEL:-gemma4:31b-cloud}"
 
 # --- Step 1: System deps ---
 echo ""
-echo "[1/8] Installing system dependencies..."
+echo "[1/7] Installing system dependencies..."
 apt-get update -qq
 apt-get install -y -qq ffmpeg flac > /dev/null 2>&1
 
 # --- Step 2: Find and activate conda ---
 echo ""
-echo "[2/8] Setting up Python environment..."
+echo "[2/7] Setting up Python environment..."
 # Source conda if available (RunPod images have it but not in PATH)
 CONDA_SH=""
-for candidate in /root/miniconda3/etc/profile.d/conda.sh /opt/conda/etc/profile.d/conda.sh /home/*/miniconda3/etc/profile.d/conda.sh; do
+for candidate in /opt/conda/etc/profile.d/conda.sh /root/miniconda3/etc/profile.d/conda.sh /root/anaconda3/etc/profile.d/conda.sh /home/*/miniconda3/etc/profile.d/conda.sh /home/*/anaconda3/etc/profile.d/conda.sh; do
     if [ -f "$candidate" ]; then
         CONDA_SH="$candidate"
         break
