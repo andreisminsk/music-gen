@@ -17,7 +17,6 @@ echo "  YuE2 Music Generation - RunPod Setup"
 echo "=========================================="
 
 # --- Config ---
-REPO_URL="${REPO_URL:-https://github.com/your-org/music-gen.git}"
 INSTALL_DIR="${INSTALL_DIR:-/workspace/music-gen}"
 PYTHON="${PYTHON:-python3}"
 PIP="${PIP:-pip3}"
@@ -61,30 +60,20 @@ else
     PIP="$(which pip)"
 fi
 
-# --- Step 3: Clone repo ---
+# --- Step 3: Install PyTorch with CUDA ---
 echo ""
-echo "[3/8] Cloning repo to ${INSTALL_DIR}..."
-if [ -d "${INSTALL_DIR}" ]; then
-    echo "  Directory exists, pulling latest..."
-    cd "${INSTALL_DIR}" && git pull --ff-only || true
-else
-    git clone "${REPO_URL}" "${INSTALL_DIR}"
-    cd "${INSTALL_DIR}"
-fi
-
-# --- Step 4: Install PyTorch with CUDA ---
-echo ""
-echo "[4/8] Installing PyTorch with CUDA 12.4..."
+echo "[3/7] Installing PyTorch with CUDA 12.4..."
+cd "${INSTALL_DIR}"
 ${PIP} install --quiet torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # --- Step 5: Install project ---
 echo ""
-echo "[5/8] Installing music-gen package..."
+echo "[4/7] Installing music-gen package..."
 ${PIP} install --quiet -e ".[dev]"
 
 # --- Step 6: Install Ollama ---
 echo ""
-echo "[6/8] Installing Ollama for lyrics generation..."
+echo "[5/7] Installing Ollama for lyrics generation..."
 if command -v ollama &> /dev/null; then
     echo "  Ollama already installed, skipping."
 else
@@ -104,12 +93,12 @@ fi
 
 # --- Step 7: Pull default lyrics model ---
 echo ""
-echo "[7/8] Pulling lyrics model: ${OLLAMA_MODEL} (this may take a while)..."
+echo "[6/7] Pulling lyrics model: ${OLLAMA_MODEL} (this may take a while)..."
 ollama pull "${OLLAMA_MODEL}"
 
 # --- Step 8: Pre-download YuE2 model weights ---
 echo ""
-echo "[8/8] Pre-downloading YuE2-3B model weights (this takes a while)..."
+echo "[7/7] Pre-downloading YuE2-3B model weights (this takes a while)..."
 ${PYTHON} -c "
 from huggingface_hub import snapshot_download
 print('Downloading YuE2-3B...')
