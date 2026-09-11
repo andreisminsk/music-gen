@@ -240,15 +240,19 @@ REPO_URL=https://github.com/your-org/music-gen.git bash deploy_runpod.sh
 
 The script will:
 - Install ffmpeg/flac
-- Create a conda env (`yue2`, Python 3.10)
-- Install PyTorch with CUDA 12.4
+- Set up a Python environment (conda or venv)
 - Install the `music-gen` package
-- Pre-download all model weights (~7GB)
+- Install PyTorch 2.10 with CUDA 12.4
+- Pin `huggingface-hub<1.0` for compatibility
+- Install Ollama and pull the lyrics model
+- Pre-download all YuE2 model weights (~7GB)
 
 ### 4. Generate Music
 
 ```bash
+# Activate environment (conda or venv — the script tells you which)
 conda activate yue2
+# OR: source /workspace/music-gen/.venv/bin/activate
 
 # Built-in example (Russian rock!)
 python -m music_gen.runpod_generate --example russian_rock
@@ -294,6 +298,41 @@ We are the machine" \
 | A100 80GB | ~55s gen | $1.64 | ~$0.03 |
 
 *Generation time from YuE2 benchmarks. First run adds ~2-3 min for model loading.*
+
+## 🔧 Troubleshooting
+
+### `huggingface-hub` version conflict
+
+`yue2_infer` pins `huggingface-hub==0.36.2`, but pip may upgrade it to 1.x which breaks `transformers`. Fix:
+
+```bash
+pip install "huggingface-hub>=0.36,<1.0"
+```
+
+The deploy script and `pipeline.py` handle this automatically.
+
+### `torch` version conflict
+
+`yue2_infer` requires `torch==2.10.0`. If you accidentally installed a different version:
+
+```bash
+pip install torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
+### `music-gen: command not found`
+
+Activate your environment first:
+
+```bash
+conda activate yue2
+# OR: source /workspace/music-gen/.venv/bin/activate
+```
+
+### `ModuleNotFoundError: No module named 'ollama'`
+
+```bash
+pip install ollama
+```
 
 ## License
 

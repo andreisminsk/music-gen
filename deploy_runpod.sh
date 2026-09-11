@@ -7,8 +7,7 @@
 #   2. Select "PyTorch" template, GPU: A100 40GB (or RTX 4090)
 #   3. Set Container Disk to 50GB+
 #   4. Open the pod's Jupyter Lab or Terminal
-#   5. Run: curl -sL <raw-url> | bash
-#      OR: git clone <repo> && cd music-gen && bash deploy_runpod.sh
+#   5. Clone the repo, cd into it, and run: bash deploy_runpod.sh
 
 set -euo pipefail
 
@@ -31,10 +30,11 @@ echo "[1/7] Installing system dependencies..."
 apt-get update -qq
 apt-get install -y -qq ffmpeg flac > /dev/null 2>&1
 
-# --- Step 2: Find and activate conda ---
+# --- Step 2: Find and activate conda, or fall back to venv ---
 echo ""
 echo "[2/7] Setting up Python environment..."
-# Source conda if available (RunPod images have it but not in PATH)
+cd "${INSTALL_DIR}"
+
 CONDA_SH=""
 for candidate in /opt/conda/etc/profile.d/conda.sh /root/miniconda3/etc/profile.d/conda.sh /root/anaconda3/etc/profile.d/conda.sh /home/*/miniconda3/etc/profile.d/conda.sh /home/*/anaconda3/etc/profile.d/conda.sh; do
     if [ -f "$candidate" ]; then
@@ -43,6 +43,7 @@ for candidate in /opt/conda/etc/profile.d/conda.sh /root/miniconda3/etc/profile.
     fi
 done
 
+USE_CONDA=false
 if [ -n "${CONDA_SH}" ]; then
     echo "  Found conda at: ${CONDA_SH}"
     source "${CONDA_SH}"
@@ -52,28 +53,30 @@ if [ -n "${CONDA_SH}" ]; then
         conda create -n "${CONDA_ENV}" python=3.10 -y -q
     fi
     conda activate "${CONDA_ENV}"
+    USE_CONDA=true
 else
-    echo "  Conda not found, using system Python."
-    echo "  Creating venv at ${INSTALL_DIR}/.venv..."
-    PYTHON="$(which python3)"
+    echo "  Conda not found, using venv."
     ${PYTHON} -m venv "${INSTALL_DIR}/.venv"
     source "${INSTALL_DIR}/.venv/bin/activate"
     PYTHON="$(which python)"
     PIP="$(which pip)"
 fi
 
-# --- Step 3: Install PyTorch with CUDA ---
+# --- Step 3: Install project ---
 echo ""
-echo "[3/7] Installing PyTorch with CUDA 12.4..."
-cd "${INSTALL_DIR}"
-${PIP} install --quiet torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-
-# --- Step 5: Install project ---
-echo ""
-echo "[4/7] Installing music-gen package..."
+echo "[3/7] Installing music-gen package..."
 ${PIP} install --quiet -e ".[dev]"
 
-# --- Step 6: Install Ollama ---
+# --- Step 4: Install PyTorch 2.10 with CUDA (yue2_infer requires torch==2.10.0) ---
+echo ""
+echo "[4/7] Installing PyTorch 2.10 with CUDA 12.4..."
+${PIP} install --quiet torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Pin huggingface-hub to compatible version (yue2_infer and transformers require <1.0)
+echo "  Pinning huggingface-hub>=0.36,<1.0..."
+${PIP} install --quiet "huggingface-hub>=0.36,<1.0"
+
+# --- Step 5: Install Ollama ---
 echo ""
 echo "[5/7] Installing Ollama for lyrics generation..."
 if command -v ollama &> /dev/null; then
@@ -93,12 +96,12 @@ if ! pgrep -x ollama &> /dev/null; then
     sleep 3
 fi
 
-# --- Step 7: Pull default lyrics model ---
+# --- Step 6: Pull default lyrics model ---
 echo ""
 echo "[6/7] Pulling lyrics model: ${OLLAMA_MODEL} (this may take a while)..."
 ollama pull "${OLLAMA_MODEL}"
 
-# --- Step 8: Pre-download YuE2 model weights ---
+# --- Step 7: Pre-download YuE2 model weights ---
 echo ""
 echo "[7/7] Pre-downloading YuE2-3B model weights (this takes a while)..."
 ${PYTHON} -c "
@@ -116,7 +119,11 @@ echo "  ✅ Setup complete!"
 echo "=========================================="
 echo ""
 echo "  Activate the environment:"
-echo "    conda activate ${CONDA_ENV}"
+if [ "${USE_CONDA}" = true ]; then
+    echo "    conda activate ${CONDA_ENV}"
+else
+    echo "    source ${INSTALL_DIR}/.venv/bin/activate"
+fi
 echo ""
 echo "  Generate lyrics with a local LLM:"
 echo "    music-gen lyrics-gen \\"

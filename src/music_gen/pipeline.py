@@ -34,6 +34,14 @@ def _ensure_yue2_infer() -> None:
         [sys.executable, "-m", "pip", "install", wheel_path],
         stdout=subprocess.DEVNULL,
     )
+    # yue2_infer may downgrade huggingface-hub or change torch; restore compatible versions
+    logger.info("Restoring dependency compatibility...")
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "--quiet",
+         "huggingface-hub>=0.36,<1.0",
+         "torch==2.10.0"],
+        stdout=subprocess.DEVNULL,
+    )
     logger.info("yue2_infer installed successfully.")
 
 
