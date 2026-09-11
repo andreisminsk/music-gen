@@ -17,7 +17,9 @@ echo "  YuE2 Music Generation - RunPod Setup"
 echo "=========================================="
 
 # --- Config ---
-INSTALL_DIR="${INSTALL_DIR:-/workspace/music-gen}"
+# Auto-detect: use the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="${INSTALL_DIR:-${SCRIPT_DIR}}"
 PYTHON="${PYTHON:-python3}"
 PIP="${PIP:-pip3}"
 CONDA_ENV="${CONDA_ENV:-yue2}"
