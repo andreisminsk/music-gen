@@ -421,33 +421,58 @@ docker compose run music-gen lyrics-gen --style "Jazz" --language English --outp
 docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt --seed 42
 ```
 
-### RunPod
+### RunPod (Docker image)
 
-To run the Docker image on [RunPod](https://runpod.io):
+The pre-built Docker image is pushed to GitHub Container Registry automatically by CI. No setup script needed — just deploy and run.
 
-1. **Push the image to a registry:**
+#### 1. Create a RunPod pod
+
+1. Go to [runpod.io](https://runpod.io) → **Pods** → **Deploy**
+2. Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:latest`
+3. Select GPU: **RTX 4090** (24GB, ~$0.44/hr) or **A100 40GB** (~$1.14/hr)
+4. Set **Container Disk** to **50GB** (models need ~7GB + working space)
+5. Under **Environment Variables**, add:
+   - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads and higher rate limits
+6. Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
+7. Click **Deploy**
+
+#### 2. Wait for the pod to start
+
+The first run downloads ~7GB of model weights (cached on the network volume for subsequent runs). With an `HF_TOKEN`, downloads are ~5x faster.
+
+#### 3. Generate music
+
 ```bash
-docker tag pytorch-2.10.0-cuda12.6-music-gen ghcr.io/yourusername/music-gen:latest
-docker push ghcr.io/yourusername/music-gen:latest
+# Generate lyrics then compose in one command
+music-gen generate \
+  --style "Jazz, warm vocal, piano, upright bass" \
+  --generate-lyrics --topic "rainy night in the city" \
+  --seed 42
+
+# From a lyrics file (upload via Jupyter Lab or SCP)
+music-gen generate \
+  --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
+  --lyrics-file /app/lyrics/song.txt \
+  --seed 42
+
+# Generate lyrics separately
+music-gen lyrics-gen --style "Russian rock" --language Russian --output /app/lyrics/song.txt
 ```
 
-2. **Deploy on RunPod:**
-   - Go to **Pods** → **Deploy**
-   - Select GPU: **A100 40GB** or better (24GB VRAM minimum)
-   - Set **Container Disk** to **50GB+** (models need space)
-   - Click **Custom Image** and enter: `ghcr.io/yourusername/music-gen:latest`
-   - Under **Environment Variables**, add:
-     - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads
-   - Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
+#### 4. Download results
 
-3. **Run:**
-   ```bash
-   music-gen generate --style "Jazz, warm vocal, piano" --lyrics "..." --seed 42
-   ```
+- **Jupyter Lab:** Navigate to `/app/output/` and download FLAC files
+- **SCP:** `scp root@<pod-ip>:/app/output/song.flac ./`
+- **RunPod CLI:** `runpodctl send song.flac`
 
-> **Tip:** If you get shared memory errors, add `--shm-size=8g` to Docker run or set it in RunPod's container options.
+#### 5. Stop / Terminate
 
-> **Note:** The existing `deploy_runpod.sh` script installs everything from scratch on a bare PyTorch pod. Using the Docker image replaces that entire setup — just select it as the custom image and run.
+- **Stop** preserves disk (resume later, pay for storage only)
+- **Terminate** deletes everything (no further charges)
+
+> **Tip:** If you get shared memory errors, add `--shm-size=8g` in RunPod's container options.
+
+> **Note:** The `deploy_runpod.sh` script is an alternative for bare PyTorch pods. Using the Docker image is simpler — no setup required.
 
 ## 🔧 Troubleshooting
 

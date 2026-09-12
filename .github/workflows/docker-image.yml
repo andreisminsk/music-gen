@@ -12,15 +12,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Log in to ghcr.io
+      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag pytorch-2.10.0-cuda12.6-music-gen:latest
+
     - name: Check image size
       run: |
         echo "=== Docker image size ==="
         docker images pytorch-2.10.0-cuda12.6-music-gen --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}"
         echo ""
-        echo "=== Layer details ==="
-        docker history pytorch-2.10.0-cuda12.6-music-gen:latest --format "table {{.CreatedBy}}\t{{.Size}}" --no-trunc | head -30
-        echo ""
         echo "=== Disk usage on runner ==="
         df -h /
+
+    - name: Push image to ghcr.io
+      run: |
+        docker tag pytorch-2.10.0-cuda12.6-music-gen:latest ghcr.io/${{ github.repository_owner }}/music-gen:latest
+        docker push ghcr.io/${{ github.repository_owner }}/music-gen:latest
