@@ -40,7 +40,7 @@ def _ensure_yue2_infer() -> None:
         [sys.executable, "-m", "pip", "install", "--quiet",
          "huggingface-hub>=0.36,<1.0", "transformers>=4.57,<5.0",
          "torch==2.10.0", "torchvision==0.25.0", "torchaudio==2.10.0",
-         "--index-url", "https://download.pytorch.org/whl/cu126"],
+        "--index-url", "https://download.pytorch.org/whl/cu128"],
         stdout=subprocess.DEVNULL,
     )
     logger.info("yue2_infer installed successfully.")

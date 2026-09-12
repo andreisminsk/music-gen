@@ -372,31 +372,32 @@ music-gen generate \
 ## Docker
 
 Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)):
+The Dockerfile is based on `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404` (CUDA 12.8 + torch 2.8.0) and upgrades PyTorch to 2.10.0 with CUDA 12.8 wheels. This upgrade is required by `yue2_infer` and adds support for Blackwell GPUs (sm_120). The base image's CUDA 12.8 runtime is fully compatible with the cu128 PyTorch wheels.
 
 ```bash
-# Build the image (~7–8 GB, without model weights)
-docker build -t music-gen .
+# Build the image (~26 GB, without model weights)
+docker build -t ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 .
 
-# Generate a song (models download on first run, ~15 GB)
-docker run --gpus all -v $(pwd)/output:/app/output music-gen generate \
+# Generate a song (models download on first run, ~7 GB)
+docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
   --style "Jazz, warm vocal, piano, upright bass" \
   --lyrics "[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we break the chain" \
   --seed 42
 
 # Generate from a lyrics file
-docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics music-gen generate \
+docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
   --style "Jazz, warm vocal, piano" \
   --lyrics-file /app/lyrics/song.txt \
   --seed 42
 
-# Generate lyrics (requires Ollama — see docker-compose below)
-docker run --gpus all -v $(pwd)/output:/app/output music-gen lyrics-gen \
-  --style "Indie folk rock" --language English
+# Generate lyrics then compose in one command
+docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
+  --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
+  --generate-lyrics --topic "rainy night in the city" --seed 42
 
 # Shell into the container
-docker run --gpus all -it music-gen bash
+docker run --gpus all -it ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 bash
 ```
-
 To bake model weights into the image (avoids first-run download, increases image to ~22 GB), uncomment the `RUN` line in the Dockerfile.
 
 ### Docker Compose (with Ollama)
@@ -419,15 +420,14 @@ To run the Docker image on [RunPod](https://runpod.io):
 
 1. **Push the image to a registry:**
    ```bash
-    docker tag ghcr.io/andreisminsk/music-gen:0.1.0 ghcr.io/andreisminsk/music-gen:latest
-    docker push ghcr.io/andreisminsk/music-gen:0.1.0
+   docker push ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128
    ```
 
 2. **Deploy on RunPod:**
    - Go to **Pods** → **Deploy**
    - Select GPU: **A100 40GB** or better (24GB VRAM minimum)
    - Set **Container Disk** to **50GB+** (models need space)
-   - Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:0.1.0`
+   - Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128`
    - Under **Environment Variables**, add:
      - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads
    - Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
