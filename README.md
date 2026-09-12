@@ -2,8 +2,6 @@
 
 YuE2-3B music generation app — turn lyrics + style into complete songs with vocals and accompaniment.
 
-> **⚠️ License notice:** YuE2-3B model weights are licensed under [CC-BY-NC-4.0](https://creativecommons.org/licenses/by-nc/4.0/). This project and Docker image may be used for **non-commercial purposes only**. Commercial use of the model or generated music requires a separate license from the YuE2 team.
-
 ## Requirements
 
 - Python 3.10+
@@ -373,33 +371,30 @@ music-gen generate \
 
 ## Docker
 
-Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)).
-
-The Dockerfile is based on `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404` and upgrades PyTorch to 2.10.0 (required by yue2_infer).
+Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)):
 
 ```bash
-# Build the image (~8 GB, without model weights)
-docker build -t pytorch-2.10.0-cuda12.6-music-gen .
+# Build the image (~7–8 GB, without model weights)
+docker build -t music-gen .
 
 # Generate a song (models download on first run, ~15 GB)
-docker run --gpus all -v $(pwd)/output:/app/output pytorch-2.10.0-cuda12.6-music-gen generate \
+docker run --gpus all -v $(pwd)/output:/app/output music-gen generate \
   --style "Jazz, warm vocal, piano, upright bass" \
   --lyrics "[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we break the chain" \
   --seed 42
 
 # Generate from a lyrics file
-docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics pytorch-2.10.0-cuda12.6-music-gen generate \
+docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics music-gen generate \
   --style "Jazz, warm vocal, piano" \
   --lyrics-file /app/lyrics/song.txt \
   --seed 42
 
-# Generate lyrics then compose in one command
-docker run --gpus all -v $(pwd)/output:/app/output pytorch-2.10.0-cuda12.6-music-gen generate \
-  --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
-  --generate-lyrics --topic "rainy night in the city" --seed 42
+# Generate lyrics (requires Ollama — see docker-compose below)
+docker run --gpus all -v $(pwd)/output:/app/output music-gen lyrics-gen \
+  --style "Indie folk rock" --language English
 
 # Shell into the container
-docker run --gpus all -it pytorch-2.10.0-cuda12.6-music-gen bash
+docker run --gpus all -it music-gen bash
 ```
 
 To bake model weights into the image (avoids first-run download, increases image to ~22 GB), uncomment the `RUN` line in the Dockerfile.
@@ -413,68 +408,51 @@ A `docker-compose.yml` is included to run music-gen alongside Ollama for lyrics 
 docker compose up -d ollama
 docker compose exec ollama ollama pull gemma4:31b-cloud
 
-# Generate lyrics then compose
-docker compose run music-gen generate \
-  --style "Jazz, warm vocal, piano" \
-  --generate-lyrics --language English --seed 42
-
-# Or separate steps
-docker compose run music-gen lyrics-gen --style "Jazz" --language English --output /app/lyrics/song.txt
-docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt --seed 42
+# Generate lyrics + music
+docker compose run music-gen lyrics-gen --style "Jazz" --language English
+docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
 ```
 
-### RunPod (Docker image)
+### RunPod
 
-The pre-built Docker image is pushed to GitHub Container Registry automatically by CI. No setup script needed — just deploy and run.
+To run the Docker image on [RunPod](https://runpod.io):
 
-#### 1. Create a RunPod pod
+1. **Push the image to a registry:**
+   ```bash
+    docker tag ghcr.io/andreisminsk/music-gen:0.1.0 ghcr.io/andreisminsk/music-gen:latest
+    docker push ghcr.io/andreisminsk/music-gen:0.1.0
+   ```
 
-1. Go to [runpod.io](https://runpod.io) → **Pods** → **Deploy**
-2. Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:latest`
-3. Select GPU: **RTX 4090** (24GB, ~$0.44/hr) or **A100 40GB** (~$1.14/hr)
-4. Set **Container Disk** to **50GB** (models need ~7GB + working space)
-5. Under **Environment Variables**, add:
-   - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads and higher rate limits
-6. Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
-7. Click **Deploy**
+2. **Deploy on RunPod:**
+   - Go to **Pods** → **Deploy**
+   - Select GPU: **A100 40GB** or better (24GB VRAM minimum)
+   - Set **Container Disk** to **50GB+** (models need space)
+   - Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:0.1.0`
+   - Under **Environment Variables**, add:
+     - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads
+   - Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
 
-#### 2. Wait for the pod to start
+3. **Run:**
+   ```bash
+   music-gen generate --style "Jazz, warm vocal, piano" --lyrics "..." --seed 42
+   ```
 
-The first run downloads ~7GB of model weights (cached on the network volume for subsequent runs). With an `HF_TOKEN`, downloads are ~5x faster.
+> **Tip:** If you get shared memory errors, add `--shm-size=8g` to Docker run or set it in RunPod's container options.
 
-#### 3. Generate music
+> **Note:** The existing `deploy_runpod.sh` script installs everything from scratch on a bare PyTorch pod. Using the Docker image replaces that entire setup — just select it as the custom image and run.
+  hf-cache:
+  ollama-data:
+```
 
 ```bash
-# Generate lyrics then compose in one command
-music-gen generate \
-  --style "Jazz, warm vocal, piano, upright bass" \
-  --generate-lyrics --topic "rainy night in the city" \
-  --seed 42
+# Start Ollama and pull a lyrics model
+docker compose up -d ollama
+docker compose exec ollama ollama pull gemma4:31b-cloud
 
-# From a lyrics file (upload via Jupyter Lab or SCP)
-music-gen generate \
-  --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
-  --lyrics-file /app/lyrics/song.txt \
-  --seed 42
-
-# Generate lyrics separately
-music-gen lyrics-gen --style "Russian rock" --language Russian --output /app/lyrics/song.txt
+# Generate lyrics + music
+docker compose run music-gen lyrics-gen --style "Jazz" --language English
+docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
 ```
-
-#### 4. Download results
-
-- **Jupyter Lab:** Navigate to `/app/output/` and download FLAC files
-- **SCP:** `scp root@<pod-ip>:/app/output/song.flac ./`
-- **RunPod CLI:** `runpodctl send song.flac`
-
-#### 5. Stop / Terminate
-
-- **Stop** preserves disk (resume later, pay for storage only)
-- **Terminate** deletes everything (no further charges)
-
-> **Tip:** If you get shared memory errors, add `--shm-size=8g` in RunPod's container options.
-
-> **Note:** The `deploy_runpod.sh` script is an alternative for bare PyTorch pods. Using the Docker image is simpler — no setup required.
 
 ## 🔧 Troubleshooting
 
