@@ -1,0 +1,29 @@
+services:
+  music-gen:
+    build: .
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    volumes:
+      - ./output:/app/output
+      - hf-cache:/root/.cache/huggingface
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  hf-cache:
+  ollama-data:

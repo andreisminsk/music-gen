@@ -371,6 +371,91 @@ We are the machine" \
 
 *Generation time from YuE2 benchmarks. First run adds ~2-3 min for model loading.*
 
+## Docker
+
+Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)):
+
+```bash
+# Build the image (~7–8 GB, without model weights)
+docker build -t music-gen .
+
+# Generate a song (models download on first run, ~15 GB)
+docker run --gpus all -v $(pwd)/output:/app/output music-gen generate \
+  --style "Jazz, warm vocal, piano, upright bass" \
+  --lyrics "[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we break the chain" \
+  --seed 42
+
+# Generate from a lyrics file
+docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics music-gen generate \
+  --style "Jazz, warm vocal, piano" \
+  --lyrics-file /app/lyrics/song.txt \
+  --seed 42
+
+# Generate lyrics (requires Ollama — see docker-compose below)
+docker run --gpus all -v $(pwd)/output:/app/output music-gen lyrics-gen \
+  --style "Indie folk rock" --language English
+
+# Shell into the container
+docker run --gpus all -it music-gen bash
+```
+
+To bake model weights into the image (avoids first-run download, increases image to ~22 GB), uncomment the `RUN` line in the Dockerfile.
+
+### Docker Compose (with Ollama)
+
+A `docker-compose.yml` is included to run music-gen alongside Ollama for lyrics generation:
+
+```bash
+# Start Ollama and pull a lyrics model
+docker compose up -d ollama
+docker compose exec ollama ollama pull gemma4:31b-cloud
+
+# Generate lyrics + music
+docker compose run music-gen lyrics-gen --style "Jazz" --language English
+docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
+```
+
+### RunPod
+
+To run the Docker image on [RunPod](https://runpod.io):
+
+1. **Push the image to a registry:**
+   ```bash
+   docker tag music-gen ghcr.io/yourusername/music-gen:latest
+   docker push ghcr.io/yourusername/music-gen:latest
+   ```
+
+2. **Deploy on RunPod:**
+   - Go to **Pods** → **Deploy**
+   - Select GPU: **A100 40GB** or better (24GB VRAM minimum)
+   - Set **Container Disk** to **50GB+** (models need space)
+   - Click **Custom Image** and enter: `ghcr.io/yourusername/music-gen:latest`
+   - Under **Environment Variables**, add:
+     - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads
+   - Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
+
+3. **Run:**
+   ```bash
+   music-gen generate --style "Jazz, warm vocal, piano" --lyrics "..." --seed 42
+   ```
+
+> **Tip:** If you get shared memory errors, add `--shm-size=8g` to Docker run or set it in RunPod's container options.
+
+> **Note:** The existing `deploy_runpod.sh` script installs everything from scratch on a bare PyTorch pod. Using the Docker image replaces that entire setup — just select it as the custom image and run.
+  hf-cache:
+  ollama-data:
+```
+
+```bash
+# Start Ollama and pull a lyrics model
+docker compose up -d ollama
+docker compose exec ollama ollama pull gemma4:31b-cloud
+
+# Generate lyrics + music
+docker compose run music-gen lyrics-gen --style "Jazz" --language English
+docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
+```
+
 ## 🔧 Troubleshooting
 
 ### `huggingface-hub` version conflict
