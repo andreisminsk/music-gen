@@ -50,10 +50,17 @@ music-gen generate \
 ### Export a plan (ABC notation only, no audio)
 
 ```bash
+# Using the plan command
 music-gen plan \
   --style "Jazz-funk, warm vocal" \
   --lyrics "[Verse 1]\nSome lyrics here" \
   --seed 42
+
+# Or using --melody-only (same result, skips audio generation)
+music-gen generate \
+  --style "Jazz-funk, warm vocal" \
+  --lyrics "[Verse 1]\nSome lyrics here" \
+  --cot melody --melody-only --seed 42
 ```
 
 ### Command reference
