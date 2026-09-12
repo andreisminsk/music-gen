@@ -63,8 +63,8 @@ else
 fi
 # --- Step 3: Install PyTorch 2.10 with CUDA FIRST (avoids slow PyPI download) ---
 echo ""
-echo "[3/7] Installing PyTorch 2.10 with CUDA 12.4..."
-${PIP} install --quiet torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+echo "[3/7] Installing PyTorch 2.10 with CUDA 12.6..."
+${PIP} install --quiet torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu126
 
 # --- Step 4: Install project (torch already satisfied, fast) ---
 echo ""

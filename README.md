@@ -242,7 +242,7 @@ The script will:
 - Install ffmpeg/flac
 - Set up a Python environment (conda or venv)
 - Install the `music-gen` package
-- Install PyTorch 2.10 with CUDA 12.4
+- Install PyTorch 2.10 with CUDA 12.6
 - Pin `huggingface-hub<1.0` for compatibility
 - Install Ollama and pull the lyrics model
 - Pre-download all YuE2 model weights (~7GB)
