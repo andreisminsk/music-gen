@@ -119,8 +119,15 @@ Generate song lyrics using a local LLM via Ollama. Produces properly structured 
 
 ### VAE variants
 
-- `m-a-p/YuE2-Vae` — better perceptual quality (default)
-- `m-a-p/YuE2-Vae-legacy` — higher benchmark scores
+YuE2 uses a separate VAE (Variational Autoencoder) model to decode acoustic latents into stereo audio. Two variants are available:
+
+- **`m-a-p/YuE2-Vae`** (default) — delivers better perceptual audio quality with cleaner highs and more natural timbre. Recommended for listening.
+- **`m-a-p/YuE2-Vae-legacy`** — achieves higher scores on the WildSongBench benchmark (used in the paper's reported results). Use this if you want to reproduce benchmark numbers.
+
+```bash
+# Use legacy VAE for benchmark reproduction
+music-gen generate --vae m-a-p/YuE2-Vae-legacy ...
+```
 
 ```bash
 music-gen generate --vae m-a-p/YuE2-Vae-legacy ...
