@@ -60,6 +60,8 @@ music-gen plan \
 
 #### `music-gen generate`
 
+Generate a complete song with vocals and accompaniment from a style prompt and lyrics. Supports inline lyrics, lyrics files, or prompt JSON files. Outputs FLAC audio plus artifacts (ABC score, tokens, latents).
+
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--style`, `-s` | *(required)* | Style/genre prompt |
@@ -79,6 +81,8 @@ music-gen plan \
 
 #### `music-gen plan`
 
+Export a symbolic music plan (ABC notation) without generating audio. Use this to preview or edit the melody and chords before generating a full song. The plan can be edited and fed back into `generate` with `--abc`.
+
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--style`, `-s` | *(required)* | Style/genre prompt |
@@ -91,6 +95,8 @@ music-gen plan \
 | `--device` | `cuda` | Torch device |
 
 #### `music-gen lyrics-gen`
+
+Generate song lyrics using a local LLM via Ollama. Produces properly structured lyrics with `[Verse]`, `[Chorus]`, `[Bridge]` markers that YuE2 expects. Supports any language and genre.
 
 | Flag | Default | Description |
 |------|---------|-------------|
