@@ -116,11 +116,23 @@ Generate song lyrics using a local LLM via Ollama. Produces properly structured 
 
 ### Chain-of-thought modes
 
+All modes produce a **full song with vocals and accompaniment**. The CoT mode controls how the symbolic plan is created before audio generation.
+
 | Mode | Flag | Description |
 |------|------|-------------|
 | Full | `--cot full` | Melody + chord planning (default, best quality) |
-| Melody | `--cot melody` | Melody-only planning (recommended for covers) |
+| Melody | `--cot melody` | Melody-only planning, no chords (recommended for covers) |
 | Off | `--cot off` | No symbolic plan, direct generation |
+
+> **Note:** YuE2 does not output a bare melody without accompaniment. To get just the melody, use `music-gen plan` to export the ABC notation, then use the melody line in a notation program or another synth.
+
+```bash
+# Export melody + chords as ABC notation (no audio)
+music-gen plan --style "Piano melody" --lyrics "[Verse 1]\nLa la la" --cot melody --seed 42
+
+# Generate full song with melody-only planning
+music-gen generate --style "Piano melody" --lyrics "[Verse 1]\nLa la la" --cot melody --seed 42
+```
 
 ### VAE variants
 
@@ -350,9 +362,33 @@ music-gen generate \
 ```
 ### 5. Download Results
 
-- **Jupyter Lab:** Navigate to `output/` and download FLAC files
-- **SCP:** `scp root@<pod-ip>:/workspace/music-gen/output/song.flac ./`
-- **RunPod CLI:** Use `runpodctl send song.flac`
+**runpodctl** (recommended — works on any OS, no SCP needed):
+
+Install on your local machine:
+```bash
+# macOS / Linux
+curl -sL https://raw.githubusercontent.com/runpod/runpodctl/main/install.sh | sudo bash
+
+# Or download manually (macOS ARM):
+cd /tmp && curl -sLO https://github.com/runpod/runpodctl/releases/latest/download/runpodctl-darwin-all.tar.gz
+tar xzf runpodctl-darwin-all.tar.gz
+mkdir -p ~/bin && mv runpodctl ~/bin/
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+Transfer files:
+```bash
+# On the pod:
+runpodctl send /app/output/song.flac
+# → prints a receive code
+
+# On your local machine:
+runpodctl receive <code>
+```
+
+Other options:
+- **Jupyter Lab:** In RunPod UI, click **Connect** → **Start Jupyter Lab**, navigate to `/app/output/`, right-click → Download
+- **Python HTTP server:** On the pod: `cd /app/output && python3 -m http.server 8080`, then access via `https://<pod-id>-8080.proxy.runpod.net/`
 
 ### 6. Stop / Terminate
 
