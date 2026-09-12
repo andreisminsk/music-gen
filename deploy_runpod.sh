@@ -24,13 +24,6 @@ PIP="${PIP:-pip3}"
 CONDA_ENV="${CONDA_ENV:-yue2}"
 OLLAMA_MODEL="${OLLAMA_MODEL:-gemma4:31b-cloud}"
 
-# HuggingFace token for faster downloads and higher rate limits
-# Get yours at https://huggingface.co/settings/tokens
-if [ -n "${HF_TOKEN:-}" ]; then
-    echo "  Using HF_TOKEN for authenticated downloads."
-    huggingface-cli login --token "${HF_TOKEN}" 2>/dev/null || true
-fi
-
 # --- Step 1: System deps ---
 echo ""
 echo "[1/7] Installing system dependencies..."
@@ -83,6 +76,13 @@ ${PIP} install -e ".[dev]"
 echo "  Pinning compatible huggingface-hub and transformers..."
 ${PIP} install --quiet "huggingface-hub>=0.36,<1.0" "transformers>=4.57,<5.0" "hf_transfer>=0.1"
 
+# HuggingFace token for faster downloads and higher rate limits
+# Get yours at https://huggingface.co/settings/tokens
+if [ -n "${HF_TOKEN:-}" ]; then
+    echo "  Logging in to HuggingFace with HF_TOKEN..."
+    huggingface-cli login --token "${HF_TOKEN}" 2>/dev/null || true
+fi
+
 # --- Step 5: Install Ollama ---
 echo ""
 echo "[5/7] Installing Ollama for lyrics generation..."
@@ -132,12 +132,11 @@ else
     echo "    source ${INSTALL_DIR}/.venv/bin/activate"
 fi
 echo ""
-echo "  Generate lyrics with a local LLM:"
-echo "    music-gen lyrics-gen \\"
+echo "  Generate lyrics then compose in one command:"
+echo "    music-gen generate \\"
 echo "      --style 'Indie folk rock, warm acoustic guitar, reflective male vocal' \\"
-echo "      --topic 'Old programmer flying between two countries' \\"
-echo "      --language English \\"
-echo "      --output lyrics/song.txt"
+echo "      --generate-lyrics --topic 'Old programmer flying between two countries' \\"
+echo "      --seed 42"
 echo ""
 echo "  Generate a song from a lyrics file:"
 echo "    music-gen generate \\"
@@ -153,9 +152,6 @@ echo "      --seed 42"
 echo ""
 echo "  Use a different Ollama model for lyrics:"
 echo "    music-gen lyrics-gen --style 'Rock' --model qwen3.5:35b-mlx --output lyrics/song.txt"
-echo ""
-echo "  Or use the Python API:"
-echo "    python -m music_gen.examples  # runs the russian_rock example"
 echo ""
 echo "  Output files will be in: ${INSTALL_DIR}/output/"
 echo ""

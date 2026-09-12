@@ -46,6 +46,13 @@ def main(argv=None):
     )
     gen.add_argument("--device", default="cuda", help="Torch device (default: cuda)")
     gen.add_argument("--no-progress", action="store_true", help="Suppress progress messages")
+    gen.add_argument("--generate-lyrics", action="store_true",
+                     help="Generate lyrics via Ollama before composing")
+    gen.add_argument("--topic", "-t", default="", help="Topic for lyrics generation")
+    gen.add_argument("--language", default="English", help="Language for lyrics generation (default: English)")
+    gen.add_argument("--lyrics-model", default="gemma4:31b-cloud", help="Ollama model for lyrics (default: gemma4:31b-cloud)")
+    gen.add_argument("--lyrics-output", default=None,
+                     help="Save generated lyrics to this file (default: lyrics/generated.txt)")
 
     # --- plan ---
     plan_cmd = sub.add_parser("plan", help="Export a symbolic plan (ABC) without generating audio")
@@ -85,8 +92,24 @@ def main(argv=None):
         if args.lyrics_file:
             from pathlib import Path
             lyrics = Path(args.lyrics_file).read_text(encoding="utf-8")
+
+        # Generate lyrics via Ollama if requested
+        if args.generate_lyrics:
+            from .lyrics_gen import generate_lyrics, save_lyrics
+            print(f"✍️  Generating lyrics (language: {args.language})...")
+            lyrics = generate_lyrics(
+                style=style or "Pop",
+                topic=args.topic,
+                language=args.language,
+                model=args.lyrics_model,
+            )
+            print(f"📝 Generated lyrics:\n{lyrics}\n")
+            lyrics_path = args.lyrics_output or "lyrics/generated.txt"
+            save_lyrics(lyrics, lyrics_path)
+            print(f"💾 Lyrics saved to: {lyrics_path}")
+
         if not style or not lyrics:
-            parser.error("Provide --style and --lyrics/--lyrics-file, or --prompt-json")
+            parser.error("Provide --style and --lyrics/--lyrics-file, or --generate-lyrics")
 
         abc_text = None
         if args.abc:

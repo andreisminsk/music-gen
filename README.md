@@ -78,6 +78,11 @@ Generate a complete song with vocals and accompaniment from a style prompt and l
 | `--vae` | `m-a-p/YuE2-Vae` | VAE variant (`YuE2-Vae` or `YuE2-Vae-legacy`) |
 | `--device` | `cuda` | Torch device |
 | `--no-progress` | — | Suppress progress messages |
+| `--generate-lyrics` | — | Generate lyrics via Ollama before composing |
+| `--topic`, `-t` | — | Topic for lyrics generation (with `--generate-lyrics`) |
+| `--language` | `English` | Language for lyrics generation |
+| `--lyrics-model` | `gemma4:31b-cloud` | Ollama model for lyrics generation |
+| `--lyrics-output` | `lyrics/generated.txt` | Save generated lyrics to this file |
 
 #### `music-gen plan`
 
@@ -129,10 +134,6 @@ YuE2 uses a separate VAE (Variational Autoencoder) model to decode acoustic late
 music-gen generate --vae m-a-p/YuE2-Vae-legacy ...
 ```
 
-```bash
-music-gen generate --vae m-a-p/YuE2-Vae-legacy ...
-```
-
 ### Python API
 
 ```python
@@ -172,21 +173,11 @@ music-gen lyrics-gen --style "Disco funk" --print-only
 music-gen lyrics-gen --style "Folk" --model qwen3.5:35b-mlx
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--model` | `gemma4:31b-cloud` | Ollama model for lyrics generation |
-| `--language` | `English` | Language to write in |
-| `--topic` | — | Optional topic or story |
-| `--sections` | `4` | Approximate number of sections |
-| `--temperature` | `0.8` | Sampling temperature |
-| `--output` | `lyrics/song.txt` | Output file path |
-| `--print-only` | — | Print to stdout, don't save |
-
 ### End-to-end: generate lyrics → compose music
 
 ```bash
-# On RunPod: generate lyrics then compose
-python -m music_gen.runpod_generate \
+# One command: generate lyrics then compose
+music-gen generate \
   --style "Russian rock, powerful male vocal" \
   --generate-lyrics --language Russian --topic "train journey" \
   --seed 2026
@@ -256,7 +247,19 @@ music-gen generate \
   --seed 42
 ```
 
-### Built-in examples
+### Built-in example prompts
+
+The `examples.py` module ships with ready-made prompts for quick testing:
+
+```bash
+# Generate lyrics in different styles
+music-gen lyrics-gen --style "Jazz-funk, warm lead vocal, Rhodes piano" --language English --print-only
+music-gen lyrics-gen --style "Cyber metal, aggressive vocals, industrial" --language English --print-only
+music-gen lyrics-gen --style "Mandarin pop, gentle vocal, acoustic guitar" --language Chinese --print-only
+music-gen lyrics-gen --style "Russian rock, powerful male vocal" --language Russian --print-only
+```
+
+Or use them from Python:
 
 ```python
 from music_gen.examples import get_example, list_examples
@@ -264,7 +267,7 @@ from music_gen.examples import get_example, list_examples
 print(list_examples())  # ['jazz_funk', 'cyber_metal', 'mandarin_pop', 'russian_rock']
 
 prompt = get_example("russian_rock")
-# prompt = {"style": "...", "lyrics": "...", "seed": 2026}
+# {"style": "Russian rock, ...", "lyrics": "...", "seed": 2026}
 ```
 
 ## ☁️ Deploying on RunPod.io
@@ -323,33 +326,28 @@ The script will:
 
 ```bash
 # Activate environment (conda or venv — the script tells you which)
+```bash
 conda activate yue2
 # OR: source /workspace/music-gen/.venv/bin/activate
 
-# Built-in example (Russian rock!)
-python -m music_gen.runpod_generate --example russian_rock
+# Generate lyrics then compose in one command
+music-gen generate \
+  --style "Russian rock, powerful male vocal" \
+  --generate-lyrics --language Russian --topic "train journey" \
+  --seed 2026
 
-# Custom prompt
-python -m music_gen.runpod_generate \
+# From a lyrics file
+music-gen generate \
   --style "Jazz, warm vocal, piano, upright bass" \
-  --lyrics "[Verse 1]
-Walking down the avenue
-
-[Chorus]
-Tonight we break the chain" \
+  --lyrics-file lyrics/song.txt \
   --seed 42
 
-# CLI tool
+# From inline lyrics
 music-gen generate \
   --style "Cyber metal, aggressive vocals" \
-  --lyrics "[Verse 1]
-Steel and silicon collide
-
-[Chorus]
-We are the machine" \
+  --lyrics "[Verse 1]\nSteel and silicon collide\n\n[Chorus]\nWe are the machine" \
   --seed 123
 ```
-
 ### 5. Download Results
 
 - **Jupyter Lab:** Navigate to `output/` and download FLAC files
