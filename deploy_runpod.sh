@@ -24,6 +24,13 @@ PIP="${PIP:-pip3}"
 CONDA_ENV="${CONDA_ENV:-yue2}"
 OLLAMA_MODEL="${OLLAMA_MODEL:-gemma4:31b-cloud}"
 
+# HuggingFace token for faster downloads and higher rate limits
+# Get yours at https://huggingface.co/settings/tokens
+if [ -n "${HF_TOKEN:-}" ]; then
+    echo "  Using HF_TOKEN for authenticated downloads."
+    huggingface-cli login --token "${HF_TOKEN}" 2>/dev/null || true
+fi
+
 # --- Step 1: System deps ---
 echo ""
 echo "[1/7] Installing system dependencies..."

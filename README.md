@@ -226,16 +226,28 @@ YuE2 requires an NVIDIA GPU with 24GB+ VRAM. RunPod is the easiest way to get st
 
 Once the pod is running, click **Connect** → **Start Terminal** (or use Jupyter Lab).
 
-### 3. Run the Setup Script
+### 3. Set up HuggingFace token (recommended)
+
+YuE2 model weights are ~7GB. Without a token, you may hit rate limits. A free HF account gives you 5x faster downloads.
+
+1. Create a free account at https://huggingface.co/join
+2. Go to https://huggingface.co/settings/tokens → **Create token** (Read access is enough)
+3. On RunPod, log in:
+   ```bash
+   huggingface-cli login
+   # Paste your token when prompted
+   ```
+
+Or pass it as an environment variable:
+```bash
+HF_TOKEN=hf_xxxxx bash deploy_runpod.sh
+```
+
+### 4. Run the Setup Script
 
 ```bash
-# Option A: Clone and run locally
-git clone <your-repo-url> /workspace/music-gen
 cd /workspace/music-gen
 bash deploy_runpod.sh
-
-# Option B: One-liner (update REPO_URL first)
-REPO_URL=https://github.com/your-org/music-gen.git bash deploy_runpod.sh
 ```
 
 The script will:
