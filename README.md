@@ -2,6 +2,8 @@
 
 YuE2-3B music generation app — turn lyrics + style into complete songs with vocals and accompaniment.
 
+> **⚠️ License notice:** YuE2-3B model weights are licensed under [CC-BY-NC-4.0](https://creativecommons.org/licenses/by-nc/4.0/). This project and Docker image may be used for **non-commercial purposes only**. Commercial use of the model or generated music requires a separate license from the YuE2 team.
+
 ## Requirements
 
 - Python 3.10+
