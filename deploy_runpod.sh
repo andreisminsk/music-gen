@@ -61,16 +61,16 @@ else
     PYTHON="$(which python)"
     PIP="$(which pip)"
 fi
-
-# --- Step 3: Install project ---
+# --- Step 3: Install PyTorch 2.10 with CUDA FIRST (avoids slow PyPI download) ---
 echo ""
-echo "[3/7] Installing music-gen package..."
-${PIP} install --quiet -e ".[dev]"
-
-# --- Step 4: Install PyTorch 2.10 with CUDA (yue2_infer requires torch==2.10.0) ---
-echo ""
-echo "[4/7] Installing PyTorch 2.10 with CUDA 12.4..."
+echo "[3/7] Installing PyTorch 2.10 with CUDA 12.4..."
 ${PIP} install --quiet torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# --- Step 4: Install project (torch already satisfied, fast) ---
+echo ""
+echo "[4/7] Installing music-gen package..."
+cd "${INSTALL_DIR}"
+${PIP} install --quiet -e ".[dev]"
 
 # Pin huggingface-hub to compatible version (yue2_infer and transformers require <1.0)
 echo "  Pinning huggingface-hub>=0.36,<1.0..."
