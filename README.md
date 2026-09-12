@@ -116,23 +116,11 @@ Generate song lyrics using a local LLM via Ollama. Produces properly structured 
 
 ### Chain-of-thought modes
 
-All modes produce a **full song with vocals and accompaniment**. The CoT mode controls how the symbolic plan is created before audio generation.
-
 | Mode | Flag | Description |
 |------|------|-------------|
 | Full | `--cot full` | Melody + chord planning (default, best quality) |
-| Melody | `--cot melody` | Melody-only planning, no chords (recommended for covers) |
+| Melody | `--cot melody` | Melody-only planning (recommended for covers) |
 | Off | `--cot off` | No symbolic plan, direct generation |
-
-> **Note:** YuE2 does not output a bare melody without accompaniment. To get just the melody, use `music-gen plan` to export the ABC notation, then use the melody line in a notation program or another synth.
-
-```bash
-# Export melody + chords as ABC notation (no audio)
-music-gen plan --style "Piano melody" --lyrics "[Verse 1]\nLa la la" --cot melody --seed 42
-
-# Generate full song with melody-only planning
-music-gen generate --style "Piano melody" --lyrics "[Verse 1]\nLa la la" --cot melody --seed 42
-```
 
 ### VAE variants
 
@@ -387,6 +375,7 @@ runpodctl receive <code>
 ```
 
 Other options:
+- **SCP:** `scp -P <port> root@<pod-ip>:/app/output/song.flac ./` (SSH server is enabled in the Docker image)
 - **Jupyter Lab:** In RunPod UI, click **Connect** → **Start Jupyter Lab**, navigate to `/app/output/`, right-click → Download
 - **Python HTTP server:** On the pod: `cd /app/output && python3 -m http.server 8080`, then access via `https://<pod-id>-8080.proxy.runpod.net/`
 

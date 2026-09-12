@@ -12,8 +12,11 @@ FROM runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404
 
 # System dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg flac curl && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends ffmpeg flac curl openssh-server && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /run/sshd && \
+    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 
 WORKDIR /app
 
@@ -47,11 +50,15 @@ VOLUME /app/output
 # HF cache can be mounted for persistence
 ENV HF_HOME=/root/.cache/huggingface
 
-# Start Ollama in background, then keep container alive
+# Start SSH, Ollama in background, then keep container alive
 # RunPod users SSH in and run: music-gen generate ...
+# SCP is enabled for file transfer: scp root@<pod>:/app/output/song.flac ./
 COPY <<'EOF' /app/entrypoint.sh
 #!/bin/bash
 set -e
+
+# Start SSH server
+/usr/sbin/sshd
 
 # Start Ollama if available
 if command -v ollama &> /dev/null; then

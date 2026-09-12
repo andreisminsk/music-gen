@@ -46,6 +46,8 @@ def main(argv=None):
     )
     gen.add_argument("--device", default="cuda", help="Torch device (default: cuda)")
     gen.add_argument("--no-progress", action="store_true", help="Suppress progress messages")
+    gen.add_argument("--melody-only", action="store_true",
+                     help="Export only the melody from the plan (ABC + MIDI), no full song audio")
     gen.add_argument("--generate-lyrics", action="store_true",
                      help="Generate lyrics via Ollama before composing")
     gen.add_argument("--topic", "-t", default="", help="Topic for lyrics generation")
@@ -122,6 +124,19 @@ def main(argv=None):
             device=args.device,
             progress=not args.no_progress,
         )
+
+        # Melody-only mode: export plan + melody, skip audio generation
+        if args.melody_only:
+            from pathlib import Path
+            out = Path(args.output_dir)
+            out.mkdir(parents=True, exist_ok=True)
+            plan = pipe.plan(style=style, lyrics=lyrics, cot=args.cot, seed=seed)
+            plan.save(str(out / "melody_plan"))
+            print(f"\n✅ Melody plan saved to: {out / 'melody_plan'}")
+            print(f"   ABC score: {out / 'melody_plan' / 'score.abc'}")
+            pipe.close()
+            return
+
         result = generate_song(
             pipe=pipe,
             style=style,
