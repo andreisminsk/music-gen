@@ -7,12 +7,20 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag pytorch-2.10.0-cuda12.6-music-gen:$(date +%s)
+      run: docker build . --file Dockerfile --tag pytorch-2.10.0-cuda12.6-music-gen:latest
+    - name: Check image size
+      run: |
+        echo "=== Docker image size ==="
+        docker images pytorch-2.10.0-cuda12.6-music-gen --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}"
+        echo ""
+        echo "=== Layer details ==="
+        docker history pytorch-2.10.0-cuda12.6-music-gen:latest --format "table {{.CreatedBy}}\t{{.Size}}" --no-trunc | head -30
+        echo ""
+        echo "=== Disk usage on runner ==="
+        df -h /

@@ -371,30 +371,33 @@ music-gen generate \
 
 ## Docker
 
-Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)):
+Build and run with Docker (requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)).
+
+The Dockerfile is based on `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404` and upgrades PyTorch to 2.10.0 (required by yue2_infer).
 
 ```bash
-# Build the image (~7–8 GB, without model weights)
-docker build -t music-gen .
+# Build the image (~8 GB, without model weights)
+docker build -t pytorch-2.10.0-cuda12.6-music-gen .
 
 # Generate a song (models download on first run, ~15 GB)
-docker run --gpus all -v $(pwd)/output:/app/output music-gen generate \
+docker run --gpus all -v $(pwd)/output:/app/output pytorch-2.10.0-cuda12.6-music-gen generate \
   --style "Jazz, warm vocal, piano, upright bass" \
   --lyrics "[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we break the chain" \
   --seed 42
 
 # Generate from a lyrics file
-docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics music-gen generate \
+docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics pytorch-2.10.0-cuda12.6-music-gen generate \
   --style "Jazz, warm vocal, piano" \
   --lyrics-file /app/lyrics/song.txt \
   --seed 42
 
-# Generate lyrics (requires Ollama — see docker-compose below)
-docker run --gpus all -v $(pwd)/output:/app/output music-gen lyrics-gen \
-  --style "Indie folk rock" --language English
+# Generate lyrics then compose in one command
+docker run --gpus all -v $(pwd)/output:/app/output pytorch-2.10.0-cuda12.6-music-gen generate \
+  --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
+  --generate-lyrics --topic "rainy night in the city" --seed 42
 
 # Shell into the container
-docker run --gpus all -it music-gen bash
+docker run --gpus all -it pytorch-2.10.0-cuda12.6-music-gen bash
 ```
 
 To bake model weights into the image (avoids first-run download, increases image to ~22 GB), uncomment the `RUN` line in the Dockerfile.
@@ -408,9 +411,14 @@ A `docker-compose.yml` is included to run music-gen alongside Ollama for lyrics 
 docker compose up -d ollama
 docker compose exec ollama ollama pull gemma4:31b-cloud
 
-# Generate lyrics + music
-docker compose run music-gen lyrics-gen --style "Jazz" --language English
-docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
+# Generate lyrics then compose
+docker compose run music-gen generate \
+  --style "Jazz, warm vocal, piano" \
+  --generate-lyrics --language English --seed 42
+
+# Or separate steps
+docker compose run music-gen lyrics-gen --style "Jazz" --language English --output /app/lyrics/song.txt
+docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt --seed 42
 ```
 
 ### RunPod
@@ -418,10 +426,10 @@ docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /
 To run the Docker image on [RunPod](https://runpod.io):
 
 1. **Push the image to a registry:**
-   ```bash
-   docker tag music-gen ghcr.io/yourusername/music-gen:latest
-   docker push ghcr.io/yourusername/music-gen:latest
-   ```
+```bash
+docker tag pytorch-2.10.0-cuda12.6-music-gen ghcr.io/yourusername/music-gen:latest
+docker push ghcr.io/yourusername/music-gen:latest
+```
 
 2. **Deploy on RunPod:**
    - Go to **Pods** → **Deploy**
@@ -440,19 +448,6 @@ To run the Docker image on [RunPod](https://runpod.io):
 > **Tip:** If you get shared memory errors, add `--shm-size=8g` to Docker run or set it in RunPod's container options.
 
 > **Note:** The existing `deploy_runpod.sh` script installs everything from scratch on a bare PyTorch pod. Using the Docker image replaces that entire setup — just select it as the custom image and run.
-  hf-cache:
-  ollama-data:
-```
-
-```bash
-# Start Ollama and pull a lyrics model
-docker compose up -d ollama
-docker compose exec ollama ollama pull gemma4:31b-cloud
-
-# Generate lyrics + music
-docker compose run music-gen lyrics-gen --style "Jazz" --language English
-docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
-```
 
 ## 🔧 Troubleshooting
 

@@ -1,6 +1,6 @@
 # ---- Music Generation Docker Image ----
-# Build:  docker build -t music-gen .
-# Run:    docker run --gpus all -v ./output:/app/output music-gen generate --style "Jazz" --lyrics "..."
+# Build:  docker build -t pytorch-2.10.0-cuda12.6-music-gen .
+# Run:    docker run --gpus all -v ./output:/app/output pytorch-2.10.0-cuda12.6-music-gen generate --style "Jazz" --lyrics "..."
 # GPU required (CUDA). Use --gpus all or --gpus device=0.
 #
 # Base image: RunPod PyTorch with CUDA 12.8 + torch 2.8.0
