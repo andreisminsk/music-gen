@@ -70,11 +70,11 @@ ${PIP} install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url 
 echo ""
 echo "[4/7] Installing music-gen package..."
 cd "${INSTALL_DIR}"
-${PIP} install --quiet -e ".[dev]"
+${PIP} install -e ".[dev]"
 
-# Pin huggingface-hub to compatible version (yue2_infer and transformers require <1.0)
-echo "  Pinning huggingface-hub>=0.36,<1.0..."
-${PIP} install --quiet "huggingface-hub>=0.36,<1.0"
+# Pin compatible versions (yue2_infer requires huggingface-hub<1.0 and transformers<5.0)
+echo "  Pinning compatible huggingface-hub and transformers..."
+${PIP} install --quiet "huggingface-hub>=0.36,<1.0" "transformers>=4.57,<5.0" "hf_transfer>=0.1"
 
 # --- Step 5: Install Ollama ---
 echo ""
