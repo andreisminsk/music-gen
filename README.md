@@ -56,6 +56,53 @@ music-gen plan \
   --seed 42
 ```
 
+### Command reference
+
+#### `music-gen generate`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--style`, `-s` | *(required)* | Style/genre prompt |
+| `--lyrics`, `-l` | — | Lyrics text (use `\n` for line breaks) |
+| `--lyrics-file`, `-L` | — | Path to a lyrics text file |
+| `--prompt-json`, `-p` | — | Path to a prompt JSON file (keys: style, lyrics, seed) |
+| `--cot` | `full` | Chain-of-thought mode: `full`, `melody`, or `off` |
+| `--cfg-scale` | `1.2` | Classifier-free guidance scale |
+| `--seed` | — | Random seed for reproducibility |
+| `--abc` | — | Path to ABC notation file (for covers/edits) |
+| `--output-dir`, `-o` | `output` | Output directory |
+| `--filename`, `-f` | `song` | Output filename (no extension) |
+| `--model` | `m-a-p/YuE2-3B` | Model repo ID |
+| `--vae` | `m-a-p/YuE2-Vae` | VAE variant (`YuE2-Vae` or `YuE2-Vae-legacy`) |
+| `--device` | `cuda` | Torch device |
+| `--no-progress` | — | Suppress progress messages |
+
+#### `music-gen plan`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--style`, `-s` | *(required)* | Style/genre prompt |
+| `--lyrics`, `-l` | *(required)* | Lyrics text |
+| `--cot` | `full` | `full` or `melody` |
+| `--seed` | — | Random seed |
+| `--output-dir`, `-o` | `output` | Output directory |
+| `--model` | `m-a-p/YuE2-3B` | Model repo ID |
+| `--vae` | `m-a-p/YuE2-Vae` | VAE variant |
+| `--device` | `cuda` | Torch device |
+
+#### `music-gen lyrics-gen`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--style`, `-s` | *(required)* | Style/genre prompt |
+| `--topic`, `-t` | — | Optional topic or story |
+| `--language`, `-L` | `English` | Language to write in |
+| `--model`, `-m` | `gemma4:31b-cloud` | Ollama model for lyrics generation |
+| `--sections`, `-n` | `4` | Approximate number of sections |
+| `--temperature` | `0.8` | Sampling temperature |
+| `--output`, `-o` | `lyrics/song.txt` | Output file path |
+| `--print-only` | — | Print to stdout, don't save |
+
 ### Chain-of-thought modes
 
 | Mode | Flag | Description |
