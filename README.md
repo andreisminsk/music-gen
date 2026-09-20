@@ -2,7 +2,7 @@
 
 YuE2-3B music generation app — turn lyrics + style into complete songs with vocals and accompaniment.
 
-> **Tip:** Use  [MartiAi Projects Avatar](https://t.me/avatar_martiai_bot) to help you with product installation and run.
+> **Tip:** Use  [MartiAi Projects Avatar](https://t.me/avatar_martiai_bot) to help you with product installation and run. 
 
 ## Requirements
 
