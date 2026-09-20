@@ -481,6 +481,11 @@ To run the Docker image on [RunPod](https://runpod.io):
 docker compose up -d ollama
 docker compose exec ollama ollama pull gemma4:31b-cloud
 
+# Run Ollama lyrics model and authenticate with your Ollama cloud account if require
+docker compose exec ollama ollama run gemma4:31b-cloud
+```
+
+```bash
 # Generate lyrics + music
 docker compose run music-gen lyrics-gen --style "Jazz" --language English
 docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
@@ -519,6 +524,54 @@ conda activate yue2
 
 ```bash
 pip install ollama
+```
+
+### Ollama error `Unauthorized (status code: 401)`
+
+Example:
+
+```bash
+ root@38f363588c13:/app# music-gen generate --style "Rock ballad" --generate-lyrics --language English --topic "Night flight to a city of heavy rains, located on a sea shore, sparkling through the clouds and rain with neon lights"
+✍️  Generating lyrics (language: English)...
+2026-09-20 05:43:52,557 [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 401 Unauthorized"
+Traceback (most recent call last):
+  File "/usr/local/bin/music-gen", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/app/src/music_gen/cli.py", line 102, in main
+    lyrics = generate_lyrics(
+             ^^^^^^^^^^^^^^^^
+  File "/app/src/music_gen/lyrics_gen.py", line 84, in generate_lyrics
+    response = ollama.chat(
+               ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/ollama/_client.py", line 387, in chat
+    return self._request(
+           ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/ollama/_client.py", line 199, in _request
+    return cls(**self._request_raw(*args, **kwargs).json())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/ollama/_client.py", line 143, in _request_raw
+    raise ResponseError(e.response.text, e.response.status_code) from None
+ollama._types.ResponseError: Unauthorized (status code: 401)
+```
+
+This error happens when you have no Ollama lyrics model installed and Ollama missing cloud authentication.
+What you need is pull the lyrics model and authenticate with Ollama.
+
+```bash
+root@38f363588c13:/app# ollama list
+NAME    ID    SIZE    MODIFIED
+root@38f363588c13:/app# ollama pull gemma4:31b-cloud
+pulling manifest
+verifying sha256 digest
+writing manifest
+success
+
+root@38f363588c13:/app# ollama run gemma4:31b-cloud
+You need to be signed in to Ollama to run Cloud models.
+
+If your browser did not open, navigate to:
+    https://ollama.com/connect?name=38f363588c13&key=<long_authentication_key>
 ```
 
 ## License
