@@ -574,6 +574,9 @@ If your browser did not open, navigate to:
     https://ollama.com/connect?name=38f363588c13&key=<long_authentication_key>
 ```
 
+If you are not signed in, the terminal will provide a link (e.g., https://ollama.com/connect...) for you to navigate to in your browser to complete the authentication process.
+Navigate and try running your Ollama lyrics model again.
+
 ## License
 
 YuE2-3B weights: [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
