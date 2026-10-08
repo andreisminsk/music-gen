@@ -6,6 +6,8 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
+    ports:
+      - "2222:22"  # SSH: ssh root@<host> -p 2222 (host 22 often taken by the pod's own sshd)
     volumes:
       - ./output:/app/output
       - hf-cache:/root/.cache/huggingface

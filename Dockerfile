@@ -65,16 +65,19 @@ set -e
 #!/bin/bash
 set -e
 
-# Inject SSH public keys from SSH_PUBLIC_KEYS env var (RunPod workaround)
-if [ -n "${SSH_PUBLIC_KEYS}" ]; then
+# Inject SSH public keys (RunPod workaround).
+# Accepts SSH_PUBLIC_KEYS (our convention), SSH_PUBLIC_KEY or PUBLIC_KEY
+# (RunPod's standard env vars for key injection into custom templates).
+SSH_KEYS="${SSH_PUBLIC_KEYS:-${SSH_PUBLIC_KEY:-${PUBLIC_KEY:-}}}"
+if [ -n "${SSH_KEYS}" ]; then
   mkdir -p /root/.ssh
   chmod 700 /root/.ssh
   : > /root/.ssh/authorized_keys
   while IFS= read -r key; do
     [ -n "$key" ] && echo "$key" >> /root/.ssh/authorized_keys
-  done <<< "${SSH_PUBLIC_KEYS}"
+  done <<< "${SSH_KEYS}"
   chmod 600 /root/.ssh/authorized_keys
-  echo "SSH public keys injected from SSH_PUBLIC_KEYS"
+  echo "SSH public keys injected"
 fi
 
 # Start local Ollama only when no remote OLLAMA_HOST is configured
