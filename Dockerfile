@@ -55,13 +55,11 @@ ENV HF_HOME=/root/.cache/huggingface
 # SCP is enabled for file transfer: scp root@<pod>:/app/output/song.flac ./
 #
 # RunPod does not inject SSH public keys into custom Docker images.
-# Pass them via SSH_PUBLIC_KEYS env var (newline separated):
+# Pass them via SSH_PUBLIC_KEYS env var (newline separated; SSH_PUBLIC_KEY
+# and PUBLIC_KEY are also accepted for RunPod compatibility):
 #   docker run -e SSH_PUBLIC_KEYS="ssh-ed25519 AAAA... user@host" ...
 #   Multiple keys: separate with newlines in the env var.
 COPY <<'EOF' /app/entrypoint.sh
-#!/bin/bash
-set -e
-
 #!/bin/bash
 set -e
 
@@ -79,6 +77,11 @@ if [ -n "${SSH_KEYS}" ]; then
   chmod 600 /root/.ssh/authorized_keys
   echo "SSH public keys injected"
 fi
+
+# Start SSH server (non-fatal: never kill the container over sshd)
+mkdir -p /run/sshd    # /run may be tmpfs-mounted, wiping the build-time dir
+ssh-keygen -A         # generate host keys if missing
+/usr/sbin/sshd || echo "WARNING: sshd failed to start"
 
 # Start local Ollama only when no remote OLLAMA_HOST is configured
 # (docker-compose provides a dedicated ollama service)
