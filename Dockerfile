@@ -1,6 +1,6 @@
 # ---- Music Generation Docker Image ----
-# Build:  docker build -t ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 .
-# Run:    docker run --gpus all -v ./output:/app/output ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate --style "Jazz" --lyrics "..."
+# Build:  docker build -t ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 .
+# Run:    docker run --gpus all -v ./output:/app/output ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 generate --style "Jazz" --lyrics "..."
 # GPU required (CUDA). Use --gpus all or --gpus device=0.
 #
 # Base image: RunPod PyTorch with CUDA 12.8 + torch 2.8.0
@@ -53,15 +53,33 @@ ENV HF_HOME=/root/.cache/huggingface
 # Start SSH, Ollama in background, then keep container alive
 # RunPod users SSH in and run: music-gen generate ...
 # SCP is enabled for file transfer: scp root@<pod>:/app/output/song.flac ./
+#
+# RunPod does not inject SSH public keys into custom Docker images.
+# Pass them via SSH_PUBLIC_KEYS env var (newline separated):
+#   docker run -e SSH_PUBLIC_KEYS="ssh-ed25519 AAAA... user@host" ...
+#   Multiple keys: separate with newlines in the env var.
 COPY <<'EOF' /app/entrypoint.sh
 #!/bin/bash
 set -e
 
-# Start SSH server
-/usr/sbin/sshd
+#!/bin/bash
+set -e
 
-# Start Ollama if available
-if command -v ollama &> /dev/null; then
+# Inject SSH public keys from SSH_PUBLIC_KEYS env var (RunPod workaround)
+if [ -n "${SSH_PUBLIC_KEYS}" ]; then
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+  : > /root/.ssh/authorized_keys
+  while IFS= read -r key; do
+    [ -n "$key" ] && echo "$key" >> /root/.ssh/authorized_keys
+  done <<< "${SSH_PUBLIC_KEYS}"
+  chmod 600 /root/.ssh/authorized_keys
+  echo "SSH public keys injected from SSH_PUBLIC_KEYS"
+fi
+
+# Start local Ollama only when no remote OLLAMA_HOST is configured
+# (docker-compose provides a dedicated ollama service)
+if command -v ollama &> /dev/null && [ -z "${OLLAMA_HOST}" ]; then
     ollama serve &>/dev/null &
     sleep 2
 fi

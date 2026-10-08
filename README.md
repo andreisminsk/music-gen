@@ -326,12 +326,12 @@ The script will:
 - Install ffmpeg/flac
 - Set up a Python environment (conda or venv)
 - Install the `music-gen` package
-- Install PyTorch 2.10 with CUDA 12.6
+- Install PyTorch 2.10 with CUDA 12.8
 - Pin `huggingface-hub<1.0` for compatibility
 - Install Ollama and pull the lyrics model
 - Pre-download all YuE2 model weights (~7GB)
 
-### 4. Generate Music
+### 5. Generate Music
 
 ```bash
 # Activate environment (conda or venv — the script tells you which)
@@ -357,7 +357,7 @@ music-gen generate \
   --lyrics "[Verse 1]\nSteel and silicon collide\n\n[Chorus]\nWe are the machine" \
   --seed 123
 ```
-### 5. Download Results
+### 6. Download Results
 
 **runpodctl** (recommended — works on any OS, no SCP needed):
 
@@ -388,7 +388,7 @@ Other options:
 - **Jupyter Lab:** In RunPod UI, click **Connect** → **Start Jupyter Lab**, navigate to `/app/output/`, right-click → Download
 - **Python HTTP server:** On the pod: `cd /app/output && python3 -m http.server 8080`, then access via `https://<pod-id>-8080.proxy.runpod.net/`
 
-### 6. Stop / Terminate
+### 7. Stop / Terminate
 
 - **Stop** preserves disk (you can resume later) — you pay for storage only
 - **Terminate** deletes everything — no further charges
@@ -410,27 +410,27 @@ The Dockerfile is based on `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404` (CU
 
 ```bash
 # Build the image (~26 GB, without model weights)
-docker build -t ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 .
+docker build -t ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 .
 
 # Generate a song (models download on first run, ~7 GB)
-docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
+docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 generate \
   --style "Jazz, warm vocal, piano, upright bass" \
   --lyrics "[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we break the chain" \
   --seed 42
 
 # Generate from a lyrics file
-docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
+docker run --gpus all -v $(pwd)/output:/app/output -v $(pwd)/lyrics:/app/lyrics ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 generate \
   --style "Jazz, warm vocal, piano" \
   --lyrics-file /app/lyrics/song.txt \
   --seed 42
 
 # Generate lyrics then compose in one command
-docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 generate \
+docker run --gpus all -v $(pwd)/output:/app/output ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 generate \
   --style "Indie folk rock, warm acoustic guitar, reflective male vocal" \
   --generate-lyrics --topic "rainy night in the city" --seed 42
 
 # Shell into the container
-docker run --gpus all -it ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128 bash
+docker run --gpus all -it ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128 bash
 ```
 To bake model weights into the image (avoids first-run download, increases image to ~22 GB), uncomment the `RUN` line in the Dockerfile.
 
@@ -443,6 +443,9 @@ A `docker-compose.yml` is included to run music-gen alongside Ollama for lyrics 
 docker compose up -d ollama
 docker compose exec ollama ollama pull gemma4:31b-cloud
 
+# Authenticate with Ollama cloud if required (cloud models need sign-in)
+docker compose exec ollama ollama run gemma4:31b-cloud
+
 # Generate lyrics + music
 docker compose run music-gen lyrics-gen --style "Jazz" --language English
 docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
@@ -454,16 +457,17 @@ To run the Docker image on [RunPod](https://runpod.io):
 
 1. **Push the image to a registry:**
    ```bash
-   docker push ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128
+   docker push ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128
    ```
 
 2. **Deploy on RunPod:**
    - Go to **Pods** → **Deploy**
    - Select GPU: **A100 40GB** or better (24GB VRAM minimum)
    - Set **Container Disk** to **50GB+** (models need space)
-   - Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:0.1.0-torch2.10.0-cu128`
+   - Click **Custom Image** and enter: `ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128`
    - Under **Environment Variables**, add:
      - `HF_TOKEN` — your [HuggingFace token](https://huggingface.co/settings/tokens) for faster downloads
+     - `SSH_PUBLIC_KEYS` — your SSH public key(s), newline separated (see the SSH workaround note below)
    - Under **Volumes**, add a **Network Volume** mounted at `/root/.cache/huggingface` to cache models across pod restarts
 
 3. **Run:**
@@ -474,24 +478,12 @@ To run the Docker image on [RunPod](https://runpod.io):
 > **Tip:** If you get shared memory errors, add `--shm-size=8g` to Docker run or set it in RunPod's container options.
 
 > **Note:** The existing `deploy_runpod.sh` script installs everything from scratch on a bare PyTorch pod. Using the Docker image replaces that entire setup — just select it as the custom image and run.
-  hf-cache:
-  ollama-data:
-```
 
-```bash
-# Start Ollama and pull a lyrics model
-docker compose up -d ollama
-docker compose exec ollama ollama pull gemma4:31b-cloud
-
-# Run Ollama lyrics model and authenticate with your Ollama cloud account if require
-docker compose exec ollama ollama run gemma4:31b-cloud
-```
-
-```bash
-# Generate lyrics + music
-docker compose run music-gen lyrics-gen --style "Jazz" --language English
-docker compose run music-gen generate --style "Jazz, warm vocal" --lyrics-file /app/lyrics/song.txt
-```
+> **RunPod SSH workaround:** RunPod does not inject SSH public keys into custom Docker images. Pass your public key(s) via the `SSH_PUBLIC_KEYS` environment variable — the entrypoint script writes them to `/root/.ssh/authorized_keys` at startup:
+> ```bash
+> docker run --gpus all -e SSH_PUBLIC_KEYS="ssh-ed25519 AAAA... user@host" ...
+> ```
+> Multiple keys can be passed newline-separated.
 
 ## 🔧 Troubleshooting
 
@@ -510,7 +502,7 @@ The deploy script and `pipeline.py` handle this automatically.
 `yue2_infer` requires `torch==2.10.0`. If you accidentally installed a different version:
 
 ```bash
-pip install torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+pip install torch==2.10.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
 ### `music-gen: command not found`

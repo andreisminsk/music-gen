@@ -11,6 +11,7 @@ services:
       - hf-cache:/root/.cache/huggingface
     environment:
       - OLLAMA_HOST=http://ollama:11434
+      - SSH_PUBLIC_KEYS=${SSH_PUBLIC_KEYS:-}
     depends_on:
       - ollama
 

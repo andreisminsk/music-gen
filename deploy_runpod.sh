@@ -151,7 +151,7 @@ echo "      --lyrics '[Verse 1]\nWalking down the avenue\n\n[Chorus]\nTonight we
 echo "      --seed 42"
 echo ""
 echo "  Use a different Ollama model for lyrics:"
-echo "    music-gen lyrics-gen --style 'Rock' --model qwen3.5:35b-mlx --output lyrics/song.txt"
+echo "    music-gen lyrics-gen --style 'Rock' --model qwen3.5:35b-cloud --output lyrics/song.txt"
 echo ""
 echo "  Output files will be in: ${INSTALL_DIR}/output/"
 echo ""
