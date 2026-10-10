@@ -408,3 +408,64 @@ sporadic use, pods win for sustained batch generation.
 2. **Bake model weights into the serverless image** — no network volume. Bursts of 5–7 songs followed by days/weeks idle make the volume's fixed monthly fee uneconomical (§5).
 3. **Max workers = 1, min = 0, idle timeout 10 min** — one cold start per session (~$0.15–0.20/session), $0 between sessions.
 4. **No Ollama sidecar in the worker** — lyrics come from the client or a remote `OLLAMA_HOST`.
+5. **Pod + CLI/SSH/SCP evaluated as an alternative** (§12) — preferred for interactive
+   sessions; serverless remains the choice for unattended API-driven generation.
+
+## 12. Alternative: Pod + CLI/SSH/SCP (no 20 MB cap)
+
+Evaluated against the serverless design. The ~20 MB response cap only hurts
+*API-driven* audio delivery; for interactive sessions the classic pod workflow
+avoids it entirely — SCP has no size limit, and the existing pod image
+(`Dockerfile` at repo root) already ships SSH, key injection, and SCP support.
+
+### 12.1 Workflow
+
+```bash
+runpodctl config --apiKey RUNPOD_API_KEY     # once
+
+runpodctl pod start POD_ID                   # or: runpodctl pod create --name music-gen \
+                                             #       --gpu-id "RTX 4090" --image ghcr.io/andreisminsk/music-gen:0.2.0-torch2.10.0-cu128
+# wait ~1–3 min for the pod to reach Running and SSH to accept connections
+ssh root@<pod-gateway> -p <port> "music-gen generate --style 'Jazz' --lyrics-file lyrics/song.txt --seed 42"
+scp -P <port> root@<pod-gateway>:/app/output/*.flac ./
+runpodctl pod stop POD_ID                    # GPU released; storage-only billing
+```
+
+Full lifecycle via CLI (verified against docs.runpod.io/pods/manage-pods):
+
+| Action | CLI |
+|---|---|
+| Deploy | `runpodctl pod create --name NAME --gpu-id "GPU" --image "IMAGE"` |
+| Start | `runpodctl pod start POD_ID` |
+| Stop | `runpodctl pod stop POD_ID` |
+| Terminate | `runpodctl pod delete POD_ID` |
+| List | `runpodctl pod list` |
+
+The Python SDK (`runpod` package) exposes the same operations
+(`runpod.start_pod`, `runpod.stop_pod`, `runpod.terminate_pod`, …) for
+programmatic control.
+
+### 12.2 Comparison vs serverless
+
+| Aspect | Serverless | Pod + CLI/SSH/SCP |
+|---|---|---|
+| 20 MB cap | yes — needs S3/R2 for audio | **none — SCP any size** |
+| New infra | handler + Dockerfile + S3 account | **zero — existing image works as-is** |
+| Session cost (7 songs) | ~$0.15–0.20 | ~$0.10–0.20 (start 2–3 min + 7 gens + transfer) |
+| Idle cost | $0 guaranteed (scale to zero) | $0 **only if stopped** — a forgotten running 4090 = ~$10.56/day |
+| Stop semantics | n/a | container disk cleared → weights must be **baked in image** (re-pulled on start) or on a network volume ($1.50–3.50/mo) |
+| Programmatic API | native (queue, status polling) | possible via SDK, but clunky |
+
+### 12.3 Verdict
+
+- **Interactive use** (generate a burst, listen, pick, forget for weeks):
+  **pod workflow wins** — no S3, no handler, no new image; SCP is natural.
+- **Unattended API-driven generation** (bot/app integration): **serverless wins** —
+  native queue, scale-to-zero without discipline, status polling.
+
+The one real pod risk is a forgotten running pod; mitigate by making
+`runpodctl pod stop` part of the session script (a `finally` block).
+
+> Open question: bake weights into the pod image too (image grows ~7 GB, but
+> `pod start` then skips the model download — same reasoning as §5), or keep
+> the current slim image and accept a one-time download per start.
