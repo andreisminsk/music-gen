@@ -1,0 +1,105 @@
+{
+  "status": "complete",
+  "identity": "6f01f91992ff926d1e90c27e04bdefdf12aeac53dad6e6db8f2108252e64ed22",
+  "truncated": {
+    "abc": false,
+    "semantic": false
+  },
+  "sample_rate": 48000,
+  "audio_seconds": 82.59866666666667,
+  "weights": {
+    "mot": {
+      "files": {
+        "model.safetensors": {
+          "sha256": "1d55c42c1a9875c34f5d736e15078449992b044e807ce2a138e6cf289a1e59e9",
+          "bytes": 7261441640
+        }
+      },
+      "config_sha256": "ad3477bbef890bf98ae196c1e4b44779494a6231c4ab66f32708eabadf265329"
+    },
+    "vae": {
+      "files": {
+        "model.safetensors": {
+          "sha256": "807ce9d5149fa27c5ad3e6582058469852e908f6c5acc8c8aa338e7ab7751346",
+          "bytes": 530512720
+        }
+      },
+      "config_sha256": "f0191bb9694009956de44e0c361a6f1334760be4c8f848e599bde242a54a0970"
+    }
+  },
+  "timing": {
+    "abc": {
+      "seconds": 6.486524453008315,
+      "prefill_seconds": 0.15096955400076695,
+      "ttft_seconds": 0.1519511640071869,
+      "output_tokens": 664,
+      "content_tokens": 663,
+      "output_tps": 102.36606750045483,
+      "prefix_tokens": 74,
+      "cfg_branches": 1,
+      "execution": "cuda_graph",
+      "attention": "flash"
+    },
+    "semantic": {
+      "seconds": 22.221253929979866,
+      "prefill_seconds": 0.20300882597803138,
+      "ttft_seconds": 0.2040166049846448,
+      "output_tokens": 2066,
+      "content_tokens": 2065,
+      "output_tps": 92.97405117236208,
+      "prefix_tokens": 739,
+      "cfg_branches": 2,
+      "execution": "cuda_graph",
+      "attention": "flash"
+    },
+    "nar_seconds": 6.957950887008337,
+    "vae_seconds": 3.0719419039960485,
+    "load": {
+      "resolve_and_integrity_seconds": 18.645085807016585,
+      "mot_load_seconds": 0.3465630639984738
+    },
+    "e2e_seconds": 39.56603218600503
+  },
+  "artifacts": {
+    "abc_tokens.npy": {
+      "sha256": "1ad6c046d503e29cd3b243b44611ed15a4cad015caf20b79dd0aec5e89f1badf",
+      "bytes": 2780
+    },
+    "audio.flac": {
+      "sha256": "4aa7986cbfeb54ea19aa6adb3421a4e6f59b33c9150074ce24db6efbe5c39e76",
+      "bytes": 14283453
+    },
+    "config.json": {
+      "sha256": "0c60473dba745e5c0dbf70eef2d16024d9078777626f06739057151ba48c4ef3",
+      "bytes": 1081
+    },
+    "latent.npy": {
+      "sha256": "ef516ff04f578e3b19ee0ad51a9313c12290aab1d4739ec35de344a6a562ed40",
+      "bytes": 528768
+    },
+    "plan.json": {
+      "sha256": "c4b7c00ff86e892bd664002dc14463fd5109c32fc1032e3fa10ebe30994243f2",
+      "bytes": 13766
+    },
+    "plan_manifest.json": {
+      "sha256": "c7a39030914c6323f96192faea30e1b536864637bba38555aba4fdd237a2418c",
+      "bytes": 341
+    },
+    "prefix.npy": {
+      "sha256": "fd30f562436ed537a6af0ef1e291d32088a268c19423eaa23b26860ada5353d5",
+      "bytes": 3084
+    },
+    "request.json": {
+      "sha256": "0709115508affe47c7d16725b2a5b4fc310a5ee41d6d2e8b1601524cd26e5fc6",
+      "bytes": 289
+    },
+    "score.abc": {
+      "sha256": "0e827b2e3d4b9e3674df507cc478de1e2e31f28c802056f45ce9a81adc09be66",
+      "bytes": 908
+    },
+    "semantic.npy": {
+      "sha256": "b5a046e53c13aa9321cf82f7720e03af24d6af463a8f897c678d1ddedec77212",
+      "bytes": 8388
+    }
+  }
+}

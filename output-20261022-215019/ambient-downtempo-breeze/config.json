@@ -1,0 +1,45 @@
+{
+  "generation": {
+    "abc": {
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "top_k": 30,
+      "repetition_penalty": 1.005,
+      "penalty_window": 100,
+      "min_tokens": 32,
+      "max_tokens": 4096
+    },
+    "semantic": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 100,
+      "repetition_penalty": 1.2,
+      "penalty_window": 50,
+      "min_tokens": 200,
+      "max_tokens": 9000
+    },
+    "ode_steps": 32,
+    "ode_method": "midpoint",
+    "context": 24576,
+    "version": "yue2-native-v1"
+  },
+  "overrides": {
+    "cfg_scale": 1.2
+  },
+  "cot": "full",
+  "cfg_scale": 1.2,
+  "cfg_negative": "same_instruction_and_exact_abc",
+  "backend": "torch",
+  "quantization": "none",
+  "model_dtype": "bfloat16",
+  "vae_dtype": "float32",
+  "vae_decode": "halo_crop",
+  "vae_core_frames": 1024,
+  "vae_halo_frames": 16,
+  "device": "cuda:0",
+  "memory_budget_gib": 24.0,
+  "offload_ar": false,
+  "runtime_sha256": "facebc61beedd4f9067d7c42b5694cf4205ed1153a6ad9c626da7bb6f3ffb386",
+  "decoder_release": "standard",
+  "validation_status": "unvalidated"
+}

@@ -91,7 +91,9 @@ def rest(action: str, pod_id: str) -> None:
     start/stop are POST /pods/{id}/{action}; terminate is DELETE /pods/{id}
     (v1 has no POST .../terminate — it 403s).
     """
-    api_key = [REDACTED]
+    api_key = os.environ.get("RUNPOD_API_KEY")
+    if not api_key:
+        die("RUNPOD_API_KEY is not set")
     if action == "terminate":
         req = urllib.request.Request(
             f"{API_REST}/pods/{pod_id}",

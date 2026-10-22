@@ -1,0 +1,9 @@
+{
+  "style": "Mediterranean acoustic chill, classical guitar, soft strings, light hand percussion, warm and serene",
+  "lyrics": "[Verse]\nLa la… hmm…\nAha…\n\n[Chorus]\nMmm… la la…\nHmm hmm…",
+  "cot": "full",
+  "seed": 77,
+  "abc": null,
+  "cfg_scale": 1.2,
+  "id": "song"
+}
