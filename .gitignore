@@ -41,5 +41,8 @@ lyrics/
 # uhu cache
 .uhu/
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 # Conda
 .conda/
