@@ -131,6 +131,12 @@ def generate_song(
     flac_path = out_path / f"{filename}.flac"
     song.save(str(flac_path))
     song.save_artifacts(str(out_path / filename))
+    # save_artifacts() re-writes the audio as <filename>/audio.flac — a byte
+    # duplicate of the canonical top-level FLAC. Drop it so outputs (and
+    # scp downloads) aren't doubled.
+    dup = out_path / filename / "audio.flac"
+    if dup.is_file():
+        dup.unlink()
     logger.info(f"Song saved to {flac_path}")
 
     return str(flac_path)

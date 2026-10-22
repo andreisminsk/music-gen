@@ -15,12 +15,14 @@ Flow:
 Requirements:
   RUNPOD_API_KEY env var (https://www.runpod.io/console/user/settings)
   ssh/scp in PATH; a pod template with music-gen installed
-  (default template name: image-gen1.0.0-cu128).
+  (default template name: YuE2-3B-music-gen-0.2.0-torch2.10.0-cu128).
 
 Usage:
   python runpod_remote_batch.py batch.zip
   python runpod_remote_batch.py batch_dir/ --yes
   python runpod_remote_batch.py batch.zip --pod-id <existing-pod-id>
+  python runpod_remote_batch.py --balance-only
+  python runpod_remote_batch.py batch.zip --no-terminate   # stop, keep for reuse
 """
 
 from __future__ import annotations
@@ -84,14 +86,25 @@ def gql(query: str) -> dict:
 
 
 def rest(action: str, pod_id: str) -> None:
-    """POST to the v1 REST lifecycle endpoint (start/stop) with Bearer auth."""
-    api_key = os.environ.get("RUNPOD_API_KEY")
-    req = urllib.request.Request(
-        f"{API_REST}/pods/{pod_id}/{action}",
-        data=b"",
-        headers={"Authorization": f"Bearer {api_key}"},
-        method="POST",
-    )
+    """v1 REST lifecycle call with Bearer auth.
+
+    start/stop are POST /pods/{id}/{action}; terminate is DELETE /pods/{id}
+    (v1 has no POST .../terminate — it 403s).
+    """
+    api_key = [REDACTED]
+    if action == "terminate":
+        req = urllib.request.Request(
+            f"{API_REST}/pods/{pod_id}",
+            headers={"Authorization": f"Bearer {api_key}"},
+            method="DELETE",
+        )
+    else:
+        req = urllib.request.Request(
+            f"{API_REST}/pods/{pod_id}/{action}",
+            data=b"",
+            headers={"Authorization": f"Bearer {api_key}"},
+            method="POST",
+        )
     with urllib.request.urlopen(req, timeout=30):
         pass
 
@@ -258,26 +271,32 @@ def terminate_pod(pod_id: str) -> None:
         return
     except Exception as e:  # noqa: BLE001
         log(f"  REST terminate failed ({e}); trying GraphQL podTerminate...")
-    gql('mutation { podTerminate(input: { podId: "%s" }) { id } }' % pod_id)
+    # podTerminate returns Void — NO selection set ({ id } is a GraphQL error)
+    gql('mutation { podTerminate(input: { podId: "%s" }) }' % pod_id)
 
 
 # ------------------------------------------------------------------- helpers
 
 
-def zip_batch(src: Path) -> Path:
-    """Return a zip path: pass files through, zip directories on the fly."""
+def zip_batch(src: Path) -> tuple[Path, tempfile.TemporaryDirectory | None]:
+    """Return (zip_path, temp_dir_guard). guard is None when src is already a zip.
+
+    The caller must guard.cleanup() when done — mkdtemp dirs would otherwise
+    accumulate in the system temp folder.
+    """
     if src.is_file():
         if src.suffix.lower() != ".zip":
             die(f"Batch source must be a .zip or a directory containing job.json: {src}")
-        return src
+        return src, None
     if not (src / "job.json").is_file():
         die(f"No job.json in {src} — not a valid batch directory")
-    tmp = Path(tempfile.mkdtemp(prefix="runpod-batch-")) / "batch.zip"
+    guard = tempfile.TemporaryDirectory(prefix="runpod-batch-")
+    tmp = Path(guard.name) / "batch.zip"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
         for p in sorted(src.rglob("*")):
             if p.is_file():
                 zf.write(p, p.relative_to(src))
-    return tmp
+    return tmp, guard
 
 
 def ssh_opts(port: int) -> list[str]:
@@ -341,7 +360,7 @@ def main() -> int:
     ap.add_argument("--community", action="store_true",
                     help="Deploy on community cloud (cheaper, interruptible; default: secure)")
     ap.add_argument("--keep-pod", action="store_true",
-                    help="Do NOT stop the pod at the end (billed hourly!)")
+                    help="Do NOT stop or terminate the pod at the end (billed hourly!)")
     ap.add_argument("--no-terminate", action="store_true",
                     help="Stop the pod after the batch instead of terminating "
                          "(default: terminate — no storage billing, pod deleted; "
@@ -376,20 +395,37 @@ def main() -> int:
     src = Path(args.source)
     if not src.exists():
         die(f"Batch source not found: {src}")
-    zip_path = zip_batch(src)
+    zip_path, zip_guard = zip_batch(src)
 
     # [1/6] balance before
     bal_before, spend_hr, limit = get_balance()
     log(f"[1/6] Balance before: ${bal_before:.2f}  (spend/hr ${spend_hr:.2f}, limit {limit})")
 
-    # [2/6] GPU + pod
-    gpu = pick_gpu(args)
-    template_id = resolve_template(args.template, args.template_id)
+    # [2/6] GPU + pod (GPU pick and template lookup are skipped for --pod-id:
+    # the pod keeps its own template, and prompting for a GPU would be noise)
+    gpu = None
     if args.pod_id:
         pod_id = args.pod_id
-        log(f"[2/6] Reusing pod {pod_id} — starting...")
-        rest("start", pod_id)
+        try:
+            pod = gql(f'query {{ pod(input: {{ podId: "{pod_id}" }}) '
+                      f'{{ desiredStatus }} }}').get("pod")
+        except RuntimeError:
+            pod = None
+        if pod is None:
+            die(f"Pod {pod_id} not found on this account (terminated or wrong id)")
+        if pod.get("desiredStatus") == "RUNNING":
+            log(f"[2/6] Reusing pod {pod_id} — already running.")
+        else:
+            log(f"[2/6] Reusing pod {pod_id} — starting...")
+            try:
+                rest("start", pod_id)
+            except (Exception, SystemExit) as e:
+                log(f"  REST start failed ({e}); trying GraphQL podStart...")
+                gql(f'mutation {{ podStart(input: {{ podId: "{pod_id}" }}) '
+                    f'{{ id desiredStatus }} }}')
     else:
+        gpu = pick_gpu(args)
+        template_id = resolve_template(args.template, args.template_id)
         pod_id = deploy_pod(gpu, template_id, args)
         log(f"[2/6] Pod deployed: {pod_id}  "
             f"({gpu['displayName']} @ ${gpu['_price']:.2f}/hr, {gpu['_cloud'].lower()} cloud)")
@@ -427,15 +463,20 @@ def main() -> int:
         log("Interrupted — stopping pod before exit.")
     finally:
         gpu_seconds = time.time() - t0
+        if zip_guard is not None:
+            zip_guard.cleanup()
         # [6/6] ALWAYS stop — the forgotten-pod risk from SERVERLESS-RUNPOD.md §12
         if args.keep_pod:
+            if args.no_terminate:
+                log("NOTE: --keep-pod and --no-terminate are redundant together "
+                    "(keep-pod wins).")
             log(f"[6/6] WARNING: --keep-pod set — pod {pod_id} is STILL RUNNING (billed hourly).")
         else:
             action = "Stopping" if args.no_terminate else "Terminating"
             log(f"[6/6] {action} pod {pod_id} ...")
             try:
                 (stop_pod if args.no_terminate else terminate_pod)(pod_id)
-            except Exception as e:  # noqa: BLE001 — must not mask the original error
+            except (Exception, SystemExit) as e:  # noqa: BLE001 — gql() die()s (SystemExit)
                 log(f"WARNING: pod {action.lower()} failed ({e}) — HANDLE IT MANUALLY "
                     f"in the RunPod console to avoid charges!")
 

@@ -1,115 +1,219 @@
-Title: Get a GPU type
-Link: https://docs.runpod.io/api-reference-v2/catalog/get-a-gpu-type
-Page: api-reference-v2/catalog/get-a-gpu-type
-Content: Get a GPU type
-Retrieve one Runpod GPU type with pricing and optional availability details for a specified product and deployment context.
+Title: Legacy flow
+Link: https://docs.runpod.io/get-started#legacy-flow
+Page: get-started
+Content: ## Step 2: Deploy a Pod
 
-REST Endpoint GET /v2/catalog/gpus/{id}
-Summary: Get a GPU type
-Description: Returns a single GPU type with pricing. Availability details are included only when requested with include=AVAILABILITY, which requires `product` â stock differs by product context.
-Path parameters:
-- id: type string; required
-Query parameters:
-- include: type enum<string>[]; description Comma-separated optional expansions. Supported value today: AVAILABILITY. This may expand with more include values in the future.
-- product: type enum<string>[]; description Comma-separated availability product contexts. Supported values: POD, CLUSTER, SERVERLESS. Required with include=AVAILABILITY, and valid only with it (400 either way). There is no default: the same GPU type can be scarce for pods and plentiful for serverless, so the context has to be stated rather than assumed.
-- count: type integer; description GPU count for availability and lowest-price calculations. Valid only with include=AVAILABILITY. Defaults to 1.; default 1
-- cloud: type enum<string>; description Cloud type for availability and lowest-price calculations. Valid only with include=AVAILABILITY. Supported values: SECURE, COMMUNITY. Upstream default when omitted: SECURE.; enum SECURE, COMMUNITY
-- countryCodes: type string[]; description Comma-separated ISO 3166-1 alpha-2 country codes, uppercase, to constrain availability to â e.g. FR or FR,DE. Values within this filter use OR semantics. Valid only with include=AVAILABILITY (400 otherwise); a malformed entry is a 422. Scopes availability, lowest-price calculations and the dataCenters array to those countries, so a listed data center outside them is omitted rather than returned with availability NONE. On the list endpoint a GPU type with no data center in those countries drops out entirely; the single-GPU endpoint still returns the requested type, with availability NONE and dataCenters omitted, so a 404 keeps meaning the GPU type does not exist. Read the NONE on availability rather than the absence of dataCenters, which is also absent when availability was not requested.
-- cudaVersions: type string[]; description Comma-separated CUDA versions to scope availability and lowest-price calculations to, matched exactly. Format: major.minor, e.g. 12.8 â a bare major is rejected here because it identifies no version. Valid only with include=AVAILABILITY (400 otherwise) and mutually exclusive with minCudaVersion (400 if both are sent); a malformed entry is a 422. Also narrows the returned cudaVersions array; omit it to enumerate every version offered.
-- minCudaVersion: type string; description Lowest acceptable CUDA version to scope availability and lowest-price calculations to, compared numerically. Format: integer major or major.minor, e.g. 12 or 12.1 â unlike the `gpu.minCudaVersion` body field on pod and endpoint create, a bare major is accepted here and means any release of that major, because this filter only widens a read. Valid only with include=AVAILABILITY (400 otherwise) and mutually exclusive with cudaVersions (400 if both are sent); a malformed value is a 422. Use this for an open-ended floor and cudaVersions for an exact set.
-Responses:
-200: OK
-Content type: application/json
-- id: type string; required; description Individual GPU type identifier (use for pod creation)
-- name: type string; required
-- pool: type string | null; required; description Serverless GPU pool ID (use for serverless endpoint creation). Null if GPU is not in a serverless pool.
-- manufacturer: type enum<string>; required; description Canonical GPU hardware manufacturer.; enum NVIDIA, AMD, UNKNOWN
-- memory: type integer; required; description VRAM in GB
-- secure: type boolean; required; description Available on secure cloud
-- community: type boolean; required; description Available on community cloud
-- price: type object; required; description List price in USD per hour for a **single** GPU of this type. Pod
-rates are quoted separately per cloud (`secure`, `community`);
-`serverless` is the rate for this GPU's pool. In every case the
-rate for a unit is the figure times `gpu.count`; the rate actually
-billed for a pod is reported as `cost` on the pod itself.
+Now that you've created your account, you're ready to deploy your first Pod:
 
-- price.secure: type number<float>; required
-- price.community: type number<float>; required
-- price.serverless: type number<float>; description Serverless list price per GPU per hour, from the `pool` this GPU
-belongs to. Multiply by `gpu.count` for the per-worker rate.
-Absent when the GPU is not in a serverless pool available to the
-caller. Negotiated account discounts are not reflected.
+<Tabs>
+  <Tab title="Deploy via the console">
+    Use this path to launch a Pod from the console. Configure your workload, choose a region and GPU, review the pricing, and deploy.
 
-- maxCount: type object; required; description The largest number of GPUs you can request on a single pod of this
-type, quoted separately per cloud. A pod runs on one machine, so
-this is the GPU count of the largest machine of this type Runpod
-operates in that cloud.
+    To open the deploy page, click **+ New** in the top-right corner of the console and select **Pod**.
 
-This is a ceiling, not a stock level â it does not mean that many
-GPUs are free right now. For current availability, request
-`include=AVAILABILITY&product=POD` and read `availability`
-(overall) or `dataCenters` (per data center).
+    <Tip>
+      You can also click **Pods** in the left sidebar.
+    </Tip>
 
-- maxCount.secure: type integer; required
-- maxCount.community: type integer; required
-- availability: type enum<string>; description Overall GPU availability for the requested `product` contexts. Present only when requested with include=AVAILABILITY, which also requires `product`.; enum NONE, LOW, MEDIUM, HIGH
-- dataCenters: type object[]; description Per-datacenter GPU availability for the requested `product`
-contexts, listing only the datacenters that offer this GPU in the
-requested configuration. Present only when requested with
-include=AVAILABILITY, which also requires `product`, and omitted
-entirely when the configuration is unavailable everywhere.
+    <Tabs>
+      <Tab title="Default flow">
+        <Steps>
+          <Step title="Configure your workload">
+            In the **Workload** panel at the top of the page:
 
-- dataCenters[]: type object
-- dataCenters[].id: type string; required; description Data center identifier.
-- dataCenters[].name: type string; required; description Human-readable data center name.
-- dataCenters[].availability: type enum<string>; required; description Catalog stock availability level.; enum NONE, LOW, MEDIUM, HIGH
-- cudaVersions: type object[]; description CUDA versions offered by machines with this GPU type, each tagged
-with current capacity. Present only when requested with
-include=AVAILABILITY, and scoped by the same filters as
-`availability` (`count`, `cloud`, `product`, and whichever of
-`cudaVersions` / `minCudaVersion` was supplied).
+            * **Template**: select the container image your Pod will run. Use the search box to find a template, or click **Explore all** to browse. The selected template and its image appear below the search bar. Click **Set overrides** to customize environment variables, exposed ports, or container start commands without editing the template itself.
+            * **Pod name**: a name is auto-generated. You can replace it with any name you prefer.
+            * **Options**: when you select an [official Runpod template](/pods/templates/overview), two extra options appear. These options are not shown for community templates.
+              * **Start Jupyter notebook**: launches a Jupyter server when the Pod starts, accessible from the console. Enabled by default.
+              * **SSH terminal access**: enables SSH into the Pod. If enabled, paste your SSH public key in the field that appears. [Learn how to create an SSH key](/get-started/credentials#ssh-public-keys).
+          </Step>
 
-Machines that report no CUDA version are skipped, so this property
-is absent entirely for a GPU type with none â AMD, for instance.
-Treat a missing `cudaVersions` the same as an empty one. A version
-absent from a populated list is not offered for this GPU type.
+          <Step title="Choose a region">
+            Set the **Region** for your Pod. It's set to **Any region** by default. Click to restrict deployment to a specific geographic region.
+          </Step>
 
-- cudaVersions[]: type object
-- cudaVersions[].version: type string; required; description CUDA version as `major.minor`, suitable for `gpu.allowedCudaVersions` on pod create.
-- cudaVersions[].available: type boolean; required; description True when at least one machine on this CUDA version has free capacity now. False means the version is offered for this GPU type but is currently full, so a pod constrained to it will fail on capacity.
-401: Authentication failed because the bearer token is missing, malformed, expired, or invalid.
-Content type: application/problem+json
-- title: type string; required; description Short human-readable summary
-- status: type integer; required; description HTTP status code
-- detail: type string; required; description Human-readable explanation
-- errors: type string[]; description Individual request-validation failures.
-- errors[]: type string
-403: The bearer token is valid, but it does not grant access to the requested resource or action.
-Content type: application/problem+json
-- title: type string; required; description Short human-readable summary
-- status: type integer; required; description HTTP status code
-- detail: type string; required; description Human-readable explanation
-- errors: type string[]; description Individual request-validation failures.
-- errors[]: type string
-404: The requested resource was not found or is not accessible to the caller.
-Content type: application/problem+json
-- title: type string; required; description Short human-readable summary
-- status: type integer; required; description HTTP status code
-- detail: type string; required; description Human-readable explanation
-- errors: type string[]; description Individual request-validation failures.
-- errors[]: type string
-429: The caller exceeded its per-user rate limit. The response identifies the window that was exceeded and how long to wait. The `RateLimit` and `RateLimit-Policy` headers (per the IETF ratelimit-headers draft) also accompany successful responses, so clients can track quota before a 429.
+          <Step title="Select a GPU">
+            In the **Compute** panel, choose a GPU from one of four tabs:
 
-Content type: application/problem+json
-- title: type string; required; description Short human-readable summary
-- status: type integer; required; description HTTP status code
-- detail: type string; required; description Human-readable explanation
-- errors: type string[]; description Individual request-validation failures.
-- errors[]: type string
-default: Error
-Content type: application/problem+json
-- title: type string; required; description Short human-readable summary
-- status: type integer; required; description HTTP status code
-- detail: type string; required; description Human-readable explanation
-- errors: type string[]; description Individual request-validation failures.
-- errors[]: type string
+            * **Available**: shows only GPUs with capacity right now.
+            * **Recommended**: shows GPUs recommended by Runpod and by the template maintainer.
+            * **All**: shows all GPUs, including those that are out of capacity and those marked incompatible by the template.
+            * **Recent**: shows all GPUs you've deployed in the last 7 days. This tab only appears if you have a recent deployment history.
+
+            Use the search box, **Network volume** filter, **Filter** button, or **Sort by** dropdown to narrow the list. Click **Compare GPUs** to ask the Runpod assistant for a comparison of the selected GPUs.
+
+            The **Network volume** filter narrows the GPU list to compatible GPUs by filtering for GPUs that are in the same data center as the selected network volume. Select any network volume, and GPU availability updates to match it. GPUs that aren't compatible with the selected volume move to the incompatible section of the **All** tab.
+
+            If the GPU you want shows **Out of capacity**, you can still select it and deploy it once capacity frees up. Selecting an out-of-capacity GPU changes the final [Deploy](#deploy) step: instead of deploying right away, you can subscribe to deploy when the GPU becomes available.
+          </Step>
+
+          <Step title="Configure storage">
+            Pods offer two kinds of storage.
+
+            **Container disk**
+
+            The container's root filesystem. Anything stored here is erased when the Pod stops.
+
+            **Persistent storage**
+
+            Persistent storage keeps your data across stops and restarts, and you can mount it at any location.
+
+            It comes in three types. You can attach a volume disk on its own, or attach a network volume and a global volume together or individually:
+
+            * **Volume disk**: a disk attached directly to your Pod that keeps its data across stops and restarts but is deleted when the Pod is terminated.
+            * **Network volume**: permanent storage that exists independently of any Pod, so you can attach the same volume to different Pods over time. A network volume is tied to a single data center.
+            * **Global volume**: permanent, region-independent storage that any Pod can mount, regardless of data center. Capacity grows with the data you store. See [Global volumes](/storage/globalvolume/overview).
+
+            Each type mounts at `/workspace` by default. You can change the path at any time. If you attach a network volume and a global volume and leave both paths at their defaults, the global volume moves to `/workspace-global` and the network volume mounts at `/workspace`. Two volumes cannot share a mount path.
+
+            If you did select a network volume in the **Compute** step, the persistent storage selection in this step is locked to that network volume.
+
+            GPUs that aren't compatible with any network volume have volume disk selected automatically, and you can't select a network volume for them.
+
+            For a full comparison, see [Storage options](/pods/storage/types).
+          </Step>
+
+          <Step title="Review the pricing summary">
+            The **Summary** panel on the right shows:
+
+            * The selected template and GPU.
+            * Total cost per hour (billed per millisecond).
+            * A breakdown of GPU cost, container disk cost, persistent storage cost, and stopped cost.
+
+            Verify the configuration looks correct before deploying.
+          </Step>
+
+          <Step title="Deploy" id="deploy">
+            <Tabs>
+              <Tab title="Deploy available Pod">
+                Click **Deploy Pod** to launch your Pod.
+
+                Your Pod appears under **Pods** in the left sidebar. It may take a moment to reach the running state while the container image is pulled.
+
+                <Note>
+                  If you haven't set up payments yet, you'll be prompted to add a payment method and purchase credits for your account.
+                </Note>
+              </Tab>
+
+              <Tab title="Deploy when available">
+                If you selected an out-of-capacity GPU, the **Summary** panel shows **Instance not available** and a **Deploy when available** button in place of **Deploy Pod**. Runpod queues your Pod and deploys it automatically as soon as that GPU frees up within the time window you choose.
+
+                <Steps>
+                  <Step title="Click Deploy when available">
+                    In the right panel, click the **Deploy when available** button to open the subscription modal.
+                  </Step>
+
+                  <Step title="Set your subscription options">
+                    In the **Deploy when available** modal:
+
+                    * **Notifications**: choose how you want to be notified when your Pod deploys:
+                      * **Email**: sends a notification to one of your account's email addresses. Select which address to use. If you're a member of a team, you can also select the team's email address.
+                      * **In-console notification**: shows an alert inside the Runpod console. Both are enabled by default.
+                    * **Subscription window**: set the time range during which Runpod monitors for availability and auto-deploys your Pod:
+                      * The default window is 24 hours from now.
+                      * Click the date range to adjust the start and end time.
+                      * Check **Use advanced scheduler** to fine-tune the hours when Runpod can deploy your request, rather than monitoring continuously across the entire window.
+                  </Step>
+
+                  <Step title="Subscribe">
+                    Click **Subscribe** to confirm. Runpod monitors for availability and deploys your Pod automatically when the selected GPU becomes free within your subscription window.
+
+                    You'll receive a notification (via email or in-console, depending on your settings) when the Pod has been deployed.
+
+                    <Warning>
+                      If you don't have enough funds available when the GPU becomes available, your deploy when available subscription fails and no Pod is deployed. To retry, you'll need to subscribe again.
+                    </Warning>
+
+                    <Tip>
+                      If the GPU doesn't become available within your subscription window, your subscription expires and no Pod is deployed. You can create a new subscription at any time.
+                    </Tip>
+                  </Step>
+                </Steps>
+              </Tab>
+            </Tabs>
+          </Step>
+        </Steps>
+      </Tab>
+
+      <Tab title="Legacy flow">
+        <Note>
+          To switch back to the legacy flow, go to [Settings](https://console.runpod.io/user/settings) and enable **Switch back to the legacy deploy flow** under **Legacy Pod deploy experience**.
+        </Note>
+
+        <Steps>
+          <Step title="Select a GPU">
+            The deploy page opens to a grid of available GPUs. Use the controls at the top of the grid to narrow the list, then click a card to configure it.
+
+            * Filter the list with the row of toggles: **Secure Cloud**, **Network volume**, **Any region**, **Global Networking**, and **Additional filters**.
+            * Drag the **VRAM** slider to set a minimum amount of VRAM.
+            * Use the search box to find a GPU by name.
+            * Browse GPUs by group: Featured GPUs, NVIDIA latest generation, NVIDIA previous generation, and AMD.
+
+            Each card shows the GPU's price per hour, VRAM, maximum count, and current availability (High, Medium, Low, or Unavailable).
+
+            Click a card to select that GPU and open the Configure deployment panel below.
+          </Step>
+
+          <Step title="Configure your deployment">
+            After you select a GPU, the Configure deployment panel opens below the grid. Set the following:
+
+            * **Pod name**: a name is auto-generated. You can replace it with any name you prefer.
+            * **Pod template**: click **Edit** to modify the current template's settings, or **Change template** to swap it for a different one.
+            * **GPU count**: choose how many GPUs to attach, from 1 to 8.
+            * **Instance pricing**: choose **On-Demand** for standard pricing, or **Reserved** to reserve capacity (click **Talk to sales** to arrange a reservation).
+            * **Options**: enable **Encrypt volume**, **SSH terminal access**, or **Start Jupyter notebook**. Start Jupyter notebook is enabled by default.
+            * **Storage configuration**: set the **Container disk** size, then choose between a **Network volume** and a **Volume disk** for persistent storage.
+          </Step>
+
+          <Step title="Deploy">
+            You must complete the storage configuration before you can deploy. If you haven't selected persistent storage, a warning appears: "No network volume has been selected. Please select a network volume above or switch to volume disk." Select a network volume or switch to a volume disk to enable the deploy button.
+
+            Review the **Pricing summary** and **Pod summary** to confirm your configuration, then click **Deploy On-Demand** to deploy and start your Pod. You'll be redirected back to the Pods page after a few seconds.
+
+            <Note>
+              If you haven't set up payments yet, you'll be prompted to add a payment method and purchase credits for your account.
+            </Note>
+          </Step>
+        </Steps>
+      </Tab>
+    </Tabs>
+  </Tab>
+
+  <Tab title="Deploy via the CLI">
+    First, install the [Runpod CLI](/runpodctl/overview) on your local machine and configure it with your API key:
+
+    ```bash theme={"theme":{"light":"github-light","dark":"github-dark"}}
+    # Install runpodctl
+    bash <(wget -qO- cli.runpod.io)
+
+    # Configure your API key
+    runpodctl config --apiKey "your-api-key"
+    ```
+
+    Then deploy your Pod:
+
+    ```bash theme={"theme":{"light":"github-light","dark":"github-dark"}}
+    runpodctl pod create \
+      --name "quickstart-pod" \
+      --gpu-id "NVIDIA A40" \
+      --image "runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04"
+    ```
+
+    The response includes your Pod ID:
+
+    ```json theme={"theme":{"light":"github-light","dark":"github-dark"}}
+    {
+      "id": "uv9wy55tyv30lo",
+      "name": "quickstart-pod",
+      "desiredStatus": "RUNNING",
+      ...
+    }
+    ```
+
+    Save it for later:
+
+    ```bash theme={"theme":{"light":"github-light","dark":"github-dark"}}
+    export RUNPOD_POD_ID="uv9wy55tyv30lo"
+    ```
+  </Tab>
+</Tabs>
