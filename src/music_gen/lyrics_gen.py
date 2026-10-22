@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 DEFAULT_MODEL = "gemma4:31b-cloud"
 

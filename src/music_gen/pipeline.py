@@ -8,8 +8,10 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Reconfigure stdout for Unicode output (emoji, non-ASCII lyrics)
-sys.stdout.reconfigure(encoding="utf-8")
+# Reconfigure stdout for Unicode output (emoji, non-ASCII lyrics).
+# Guarded: sys.stdout may be a capture/test double without reconfigure().
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 MODEL_ID = "m-a-p/YuE2-3B"
 VAE_ID = "m-a-p/YuE2-Vae"

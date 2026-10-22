@@ -65,6 +65,58 @@ music-gen generate \
   --cot melody --melody-only --seed 42
 ```
 
+### Batch processing
+
+Run multiple generation jobs in a single call — the model loads **once** and is reused
+across all jobs (saves ~2–3 min of model loading per additional song). Input is a zip
+archive (or a directory) containing `job.json` — a list of `generate` parameter sets —
+plus any referenced input files (lyrics, ABC scores, prompt JSONs).
+
+`job.json`:
+```json
+{
+  "version": 1,
+  "defaults": {"cot": "full", "cfg_scale": 1.2},
+  "jobs": [
+    {
+      "output_file": "tonight-awake.flac",
+      "style": "Jazz, warm vocal, piano, upright bass",
+      "lyrics_file": "lyrics/tonight.txt",
+      "seed": 42
+    },
+    {
+      "output_file": "machine.flac",
+      "style": "Cyber metal, aggressive vocals",
+      "lyrics": "[Verse 1]\nSteel and silicon collide\n\n[Chorus]\nWe are the machine",
+      "seed": 123
+    }
+  ]
+}
+```
+
+```bash
+# From a zip archive
+music-gen batch --zip batch.zip -o output
+
+# From a directory (handy for local iteration)
+music-gen batch --dir batch/
+
+# Fail fast and choose the report location
+music-gen batch --zip batch.zip --stop-on-error --report output/report.json
+```
+
+Per-job fields mirror the `generate` flags: `style`, `lyrics`, `lyrics_file`,
+`prompt_json`, `abc`, `cot`, `cfg_scale`, `seed`, `output_file` (required, unique,
+with `.flac` extension), `melody_only`, `generate_lyrics`, `topic`, `language`,
+`lyrics_model`, `lyrics_output`. Shared settings (`model`, `vae`, `device`,
+`output_dir`) belong in `defaults` only — a per-job override would force a model
+reload and is rejected at validation.
+
+All jobs are validated **before** the model loads. Runtime failures are isolated:
+the batch continues, and `batch_report.json` records per-job status, output paths,
+seeds and durations. Exit codes: `0` all succeeded, `1` some job failed,
+`2` validation failed.
+
 ### Command reference
 
 #### `music-gen generate`
@@ -107,6 +159,23 @@ Export a symbolic music plan (ABC notation) without generating audio. Use this t
 | `--model` | `m-a-p/YuE2-3B` | Model repo ID |
 | `--vae` | `m-a-p/YuE2-Vae` | VAE variant |
 | `--device` | `cuda` | Torch device |
+
+#### `music-gen batch`
+
+Run a batch of jobs from a zip or directory containing `job.json`. The pipeline is
+loaded once and reused across all jobs. See [Batch processing](#batch-processing).
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--zip` | — | Path to a batch zip archive |
+| `--dir` | — | Path to a directory containing `job.json` |
+| `--output-dir`, `-o` | from `defaults` | Override the batch-level output directory |
+| `--model` | from `defaults` | Override the model repo ID |
+| `--vae` | from `defaults` | Override the VAE repo |
+| `--device` | from `defaults` | Override the torch device |
+| `--stop-on-error` | — | Abort the batch on the first job failure |
+| `--report` | `<output-dir>/batch_report.json` | Batch report JSON path |
+| `--no-progress` | — | Suppress progress messages |
 
 #### `music-gen lyrics-gen`
 

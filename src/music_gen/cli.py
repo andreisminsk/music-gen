@@ -78,6 +78,25 @@ def main(argv=None):
     lyr.add_argument("--output", "-o", default="lyrics/song.txt", help="Output file path (default: lyrics/song.txt)")
     lyr.add_argument("--print-only", action="store_true", help="Print lyrics to stdout only, don't save to file")
 
+    # --- batch ---
+    bat = sub.add_parser(
+        "batch",
+        help="Run multiple jobs from a zip or directory containing job.json",
+    )
+    bat_src = bat.add_mutually_exclusive_group(required=True)
+    bat_src.add_argument("--zip", dest="zip_path", help="Path to a batch zip archive")
+    bat_src.add_argument("--dir", dest="dir_path", help="Path to a directory containing job.json")
+    bat.add_argument("--output-dir", "-o", default=None,
+                     help="Override the batch-level output directory")
+    bat.add_argument("--model", default=None, help="Override the batch-level model repo ID")
+    bat.add_argument("--vae", default=None, help="Override the batch-level VAE repo")
+    bat.add_argument("--device", default=None, help="Override the batch-level torch device")
+    bat.add_argument("--stop-on-error", action="store_true",
+                     help="Abort the batch on the first job failure")
+    bat.add_argument("--report", default=None,
+                     help="Batch report JSON path (default: <output-dir>/batch_report.json)")
+    bat.add_argument("--no-progress", action="store_true", help="Suppress progress messages")
+
     args = parser.parse_args(argv)
 
     if args.command == "generate":
@@ -181,6 +200,52 @@ def main(argv=None):
             print(f"\n--- Lyrics preview ---\n{lyrics[:500]}")
             if len(lyrics) > 500:
                 print(f"... ({len(lyrics)} chars total)")
+
+    elif args.command == "batch":
+        from .batch import BatchValidationError, load_batch, run_batch
+
+        try:
+            spec = load_batch(args.zip_path or args.dir_path)
+        except BatchValidationError as e:
+            print("❌ Batch validation failed:", file=sys.stderr)
+            for err in e.errors:
+                print(f"  - {err}", file=sys.stderr)
+            return 2
+
+        # CLI flags override batch-level defaults
+        for key, val in (("model", args.model), ("vae", args.vae), ("device", args.device)):
+            if val is not None:
+                spec.defaults[key] = val
+        if args.output_dir is not None:
+            spec.defaults["output_dir"] = args.output_dir
+
+        logger.info("Batch: %d job(s) from %s → %s",
+                    len(spec.jobs), spec.source, spec.defaults["output_dir"])
+        pipe = load_pipeline(
+            model_id=spec.defaults["model"],
+            vae=spec.defaults["vae"],
+            device=spec.defaults["device"],
+            progress=not args.no_progress,
+        )
+        try:
+            report = run_batch(
+                spec,
+                pipe,
+                output_dir=args.output_dir,
+                stop_on_error=args.stop_on_error,
+                report_path=args.report,
+            )
+        except KeyboardInterrupt:
+            print("\n⚠️  Batch interrupted — partial report saved.", file=sys.stderr)
+            return 130
+        finally:
+            pipe.close()
+            spec.cleanup()
+
+        summary = report["summary"]
+        print(f"\n✅ Batch finished: {summary['succeeded']}/{summary['total']} succeeded, "
+              f"{summary['failed']} failed")
+        return 0 if summary["failed"] == 0 else 1
 
 
 if __name__ == "__main__":
