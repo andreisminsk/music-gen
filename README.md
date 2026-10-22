@@ -1,4 +1,4 @@
-# 🎵 music-gen
+# 🎵 music-gen 
 
 YuE2-3B music generation app — turn lyrics + style into complete songs with vocals and accompaniment.
 
