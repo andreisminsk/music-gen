@@ -27,6 +27,7 @@ Thumbs.db
 
 # Project-specific
 output/
+output-*/
 lyrics/
 *.flac
 *.wav
