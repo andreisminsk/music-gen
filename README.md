@@ -1,4 +1,4 @@
-# 🎵 music-gen 
+# 🎵 music-gen
 
 YuE2-3B music generation app — turn lyrics + style into complete songs with vocals and accompaniment.
 
@@ -116,6 +116,19 @@ All jobs are validated **before** the model loads. Runtime failures are isolated
 the batch continues, and `batch_report.json` records per-job status, output paths,
 seeds and durations. Exit codes: `0` all succeeded, `1` some job failed,
 `2` validation failed.
+
+**Example:** `scripts/batch/job.json` — 7 calm lounge/relaxing tracks in different
+styles (chillout piano, ambient downtempo, lo-fi jazz, balearic, bossa lounge,
+deep chill, mediterranean acoustic) with minimal vocalizations ("Hmm… aha… La la la…")
+instead of lyrics:
+
+```bash
+# Run the example batch locally (if you have a GPU)
+music-gen batch --dir scripts/batch
+
+# Or remotely on RunPod — one command, pod stopped automatically afterwards
+python scripts/runpod_remote_batch.py scripts/batch --yes
+```
 
 ### Command reference
 

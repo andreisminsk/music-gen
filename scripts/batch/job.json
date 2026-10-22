@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "defaults": {
+    "cot": "full",
+    "cfg_scale": 1.2
+  },
+  "jobs": [
+    {
+      "output_file": "lounge-piano-dusk.flac",
+      "style": "Chillout lounge, soft felt piano, warm pads, gentle brushed drums, relaxed tempo",
+      "lyrics": "[Verse]\nHmm… aha…\nLa la la…\n\n[Chorus]\nHmm… hmm…\nLa la la…",
+      "seed": 101
+    },
+    {
+      "output_file": "ambient-downtempo-breeze.flac",
+      "style": "Ambient downtempo, warm analog pads, soft sub bass, slow hypnotic groove, spacious reverb",
+      "lyrics": "[Verse]\nMmm… hmm…\nAha… la la…\n\n[Chorus]\nHmm… la la la…\nMmm…",
+      "seed": 202
+    },
+    {
+      "output_file": "lofi-jazz-terrace.flac",
+      "style": "Lo-fi jazz lounge, muted trumpet, Rhodes piano, vinyl warmth, laid-back swing, mellow",
+      "lyrics": "[Verse]\nShoo-doo hmm…\nLa la… aha…\n\n[Chorus]\nHmm hmm…\nDoo doo… la la…",
+      "seed": 303
+    },
+    {
+      "output_file": "balearic-sunset.flac",
+      "style": "Balearic chill, acoustic guitar, soft congas, ocean ambience, dreamy pads, sunset mood",
+      "lyrics": "[Verse]\nAha… hmm…\nLa la la…\n\n[Chorus]\nMmm… aha…\nLa la…",
+      "seed": 404
+    },
+    {
+      "output_file": "downtempo-bossa-lounge.flac",
+      "style": "Downtempo bossa lounge, nylon guitar, soft vibraphone, gentle percussion, smooth and calm",
+      "lyrics": "[Verse]\nHmm… da da…\nLa la…\n\n[Chorus]\nAha… hmm…\nDa la la…",
+      "seed": 505
+    },
+    {
+      "output_file": "deep-chill-lounge.flac",
+      "style": "Deep chill lounge, soft electric piano, deep rounded bass, slow beat, late-night cafe mood",
+      "lyrics": "[Verse]\nMmm… la la…\nHmm…\n\n[Chorus]\nHmm… aha…\nLa la la…",
+      "seed": 606
+    },
+    {
+      "output_file": "mediterranean-acoustic-chill.flac",
+      "style": "Mediterranean acoustic chill, classical guitar, soft strings, light hand percussion, warm and serene",
+      "lyrics": "[Verse]\nLa la… hmm…\nAha…\n\n[Chorus]\nMmm… la la…\nHmm hmm…",
+      "seed": 707
+    }
+  ]
+}

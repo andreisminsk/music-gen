@@ -18,6 +18,27 @@ VAE_ID = "m-a-p/YuE2-Vae"
 VAE_LEGACY_ID = "m-a-p/YuE2-Vae-legacy"
 
 
+def _pip_install(*args: str) -> None:
+    """pip install with a PEP 668 fallback.
+
+    Debian/Ubuntu 24.04 system Python refuses pip installs into system
+    site-packages (externally-managed-environment). Retry with
+    --break-system-packages — acceptable inside disposable containers.
+    """
+    import subprocess
+
+    cmd = [sys.executable, "-m", "pip", "install", *args]
+    try:
+        subprocess.check_call(cmd, stdout=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        logger.info("pip refused (externally-managed-environment); "
+                    "retrying with --break-system-packages...")
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--break-system-packages", *args],
+            stdout=subprocess.DEVNULL,
+        )
+
+
 def _ensure_yue2_infer() -> None:
     """Download and install the yue2_infer wheel if not already available."""
     try:
@@ -26,24 +47,18 @@ def _ensure_yue2_infer() -> None:
     except ImportError:
         pass
 
-    import subprocess
     from huggingface_hub import hf_hub_download
 
     logger.info("Downloading yue2_infer wheel from HuggingFace...")
     wheel_path = hf_hub_download(MODEL_ID, "yue2_infer-0.1.5-py3-none-any.whl")
     logger.info("Installing yue2_infer...")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", wheel_path],
-        stdout=subprocess.DEVNULL,
-    )
+    _pip_install(wheel_path)
     # yue2_infer may downgrade huggingface-hub or change torch; restore compatible versions
     logger.info("Restoring dependency compatibility...")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "--quiet",
-         "huggingface-hub>=0.36,<1.0", "transformers>=4.57,<5.0",
-         "torch==2.10.0", "torchvision==0.25.0", "torchaudio==2.10.0",
-        "--index-url", "https://download.pytorch.org/whl/cu128"],
-        stdout=subprocess.DEVNULL,
+    _pip_install(
+        "huggingface-hub>=0.36,<1.0", "transformers>=4.57,<5.0",
+        "torch==2.10.0", "torchvision==0.25.0", "torchaudio==2.10.0",
+        "--index-url", "https://download.pytorch.org/whl/cu128",
     )
     logger.info("yue2_infer installed successfully.")
 

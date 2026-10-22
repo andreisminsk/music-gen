@@ -102,32 +102,55 @@ def get_balance() -> tuple[float, float, object]:
             d["spendLimit"])
 
 
+def _gpu_price(g: dict, community: bool) -> float:
+    """On-demand price on the chosen cloud type; inf if not offered there."""
+    if community:
+        ok = g.get("communityCloud") and g.get("communityPrice") is not None
+        return g["communityPrice"] if ok else float("inf")
+    ok = g.get("secureCloud") and g.get("securePrice") is not None
+    return g["securePrice"] if ok else float("inf")
+
+
 def pick_gpu(args) -> dict:
-    """Return the confirmed GPU type. Offers the cheapest >= min VRAM first."""
+    """Return the confirmed GPU type. Offers the cheapest >= min VRAM first.
+
+    The price shown matches the cloud the pod will actually deploy on:
+    secure by default (uninterruptable, what the console shows), or
+    community with --community (cheaper, can be preempted). The
+    lowestPrice().uninterruptablePrice field mixes both clouds and
+    understates secure pricing — not used for display.
+    Sets g['_price'] and g['_cloud'] on the returned GPU.
+    """
+    community = bool(getattr(args, "community", False))
     data = gql(
-        "query { gpuTypes { id displayName memoryInGb "
-        "lowestPrice(input: { gpuCount: 1 }) { uninterruptablePrice } } }"
+        "query { gpuTypes { id displayName memoryInGb secureCloud communityCloud "
+        "securePrice communityPrice } }"
     )["gpuTypes"]
     if args.gpu:
         for g in data:
             if g["id"] == args.gpu:
+                g["_price"] = _gpu_price(g, community)
+                g["_cloud"] = "COMMUNITY" if community else "SECURE"
                 return g
         die(f"GPU id {args.gpu!r} not found (see https://docs.runpod.io/references/gpu-types)")
 
     cands = sorted(
         (g for g in data
-         if g["memoryInGb"] >= args.vram
-         and (g.get("lowestPrice") or {}).get("uninterruptablePrice")),
-        key=lambda g: g["lowestPrice"]["uninterruptablePrice"],
+         if g["memoryInGb"] >= args.vram and _gpu_price(g, community) < float("inf")),
+        key=lambda g: _gpu_price(g, community),
     )
     if not cands:
-        die(f"No GPU with >= {args.vram} GB VRAM currently available")
+        die(f"No GPU with >= {args.vram} GB VRAM currently available on "
+            f"{'community' if community else 'secure'} cloud")
 
     top = cands[:5]
-    log(f"\nCheapest compatible GPUs (>={args.vram} GB VRAM):")
+    cloud = "community" if community else "secure"
+    log(f"\nCheapest compatible GPUs (>={args.vram} GB VRAM, {cloud}-cloud on-demand price):")
     for i, g in enumerate(top, 1):
+        other = g.get("communityPrice") if not community else g.get("securePrice")
+        extra = f"  ({'community' if not community else 'secure'}: ${other:.2f})" if other else ""
         log(f"  [{i}] {g['displayName']:<30} {g['memoryInGb']:>3} GB  "
-            f"${g['lowestPrice']['uninterruptablePrice']:.2f}/hr")
+            f"${_gpu_price(g, community):.2f}/hr{extra}")
     if args.yes:
         log(f"  --yes: auto-selected [1] {top[0]['displayName']}")
         choice = 1
@@ -136,7 +159,10 @@ def pick_gpu(args) -> dict:
         if raw == "q":
             die("Aborted by user", 0)
         choice = int(raw) if raw.isdigit() and 1 <= int(raw) <= len(top) else 1
-    return top[choice - 1]
+    chosen = top[choice - 1]
+    chosen["_price"] = _gpu_price(chosen, community)
+    chosen["_cloud"] = "COMMUNITY" if community else "SECURE"
+    return chosen
 
 
 def resolve_template(name: str, template_id: str | None) -> str:
@@ -156,7 +182,7 @@ def resolve_template(name: str, template_id: str | None) -> str:
 
 def deploy_pod(gpu: dict, template_id: str, args) -> str:
     inp = (
-        "cloudType: ALL, gpuCount: 1, "
+        f"cloudType: {gpu.get('_cloud', 'SECURE')}, gpuCount: 1, "
         f'gpuTypeId: "{gpu["id"]}", '
         f"containerDiskInGb: {args.disk}, volumeInGb: {args.volume}, "
         "minVcpuCount: 4, minMemoryInGb: 16, "
@@ -202,7 +228,13 @@ def wait_ssh(ip: str, port: int, timeout_s: int) -> None:
 
 
 def stop_pod(pod_id: str) -> None:
-    rest("stop", pod_id)
+    """Stop a pod: REST v1 first, GraphQL podStop as fallback (403 observed)."""
+    try:
+        rest("stop", pod_id)
+        return
+    except Exception as e:  # noqa: BLE001
+        log(f"  REST stop failed ({e}); trying GraphQL podStop...")
+    gql('mutation { podStop(input: { podId: "%s" }) { id desiredStatus } }' % pod_id)
 
 
 # ------------------------------------------------------------------- helpers
@@ -279,6 +311,8 @@ def main() -> int:
     ap.add_argument("--output", help="Local dir for downloaded results "
                                      "(default: output-<timestamp>)")
     ap.add_argument("--yes", action="store_true", help="Non-interactive: accept cheapest GPU")
+    ap.add_argument("--community", action="store_true",
+                    help="Deploy on community cloud (cheaper, interruptible; default: secure)")
     ap.add_argument("--keep-pod", action="store_true",
                     help="Do NOT stop the pod at the end (billed hourly!)")
     ap.add_argument("--ready-timeout", type=int, default=900,
@@ -325,7 +359,7 @@ def main() -> int:
     else:
         pod_id = deploy_pod(gpu, template_id, args)
         log(f"[2/6] Pod deployed: {pod_id}  "
-            f"({gpu['displayName']} @ ${gpu['lowestPrice']['uninterruptablePrice']:.2f}/hr)")
+            f"({gpu['displayName']} @ ${gpu['_price']:.2f}/hr, {gpu['_cloud'].lower()} cloud)")
     t0 = time.time()
 
     failure: Exception | None = None
@@ -373,7 +407,7 @@ def main() -> int:
     # Balance after — billing-lag aware
     est = None
     if not args.pod_id:
-        est = gpu["lowestPrice"]["uninterruptablePrice"] * gpu_seconds / 3600
+        est = gpu["_price"] * gpu_seconds / 3600
     after, settled = wait_settled(bal_before, args.billing_wait)
     delta = bal_before - after
 
@@ -385,7 +419,7 @@ def main() -> int:
         + ("" if settled else "   (partial — RunPod posts billing asynchronously)"))
     if est is not None:
         log(f"GPU estimate:    ${est:.2f}   ({gpu['displayName']} @ "
-            f"${gpu['lowestPrice']['uninterruptablePrice']:.2f}/hr x {gpu_seconds / 60:.0f} min)")
+            f"${gpu['_price']:.2f}/hr x {gpu_seconds / 60:.0f} min)")
     if not settled:
         log("NOTE: re-run `python runpod_remote_batch.py --balance-only` in a few "
             "minutes for the final number.")
