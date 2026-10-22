@@ -43,7 +43,7 @@ API_GRAPHQL = "https://api.runpod.io/graphql"
 API_REST = "https://rest.runpod.io/v1"
 # Cloudflare blocks the default urllib User-Agent (error 1010) — use a browser UA.
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-DEFAULT_TEMPLATE = "image-gen1.0.0-cu128"
+DEFAULT_TEMPLATE = "YuE2-3B-music-gen-0.2.0-torch2.10.0-cu128"
 MIN_VRAM_DEFAULT = 24  # YuE2-3B requires 24 GB (BF16)
 
 

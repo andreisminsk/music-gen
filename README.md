@@ -374,7 +374,7 @@ python scripts/runpod_remote_batch.py batch_dir/ --yes --pod-id <pod-id>
 
 What it does:
 - Picks the cheapest GPU with ≥24 GB VRAM (live pricing, user confirms; `--yes` = auto)
-- Deploys using your RunPod template (default: `image-gen1.0.0-cu128`, override with `--template`/`--template-id`)
+- Deploys using your RunPod template (default: `YuE2-3B-music-gen-0.2.0-torch2.10.0-cu128`, override with `--template`/`--template-id`)
 - Zips a batch directory on the fly, uploads via scp, runs `music-gen batch` (streamed)
 - Downloads results to `output-<timestamp>/`
 - Stops the pod in a `finally` block — even on Ctrl+C or failure
