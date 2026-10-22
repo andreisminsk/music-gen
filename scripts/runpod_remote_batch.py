@@ -124,8 +124,12 @@ def pick_gpu(args) -> dict:
     community = bool(getattr(args, "community", False))
     data = gql(
         "query { gpuTypes { id displayName memoryInGb secureCloud communityCloud "
-        "securePrice communityPrice } }"
+        "securePrice communityPrice "
+        "lowestPrice(input: { gpuCount: 1, secureCloud: true }) { stockStatus } } }"
     )["gpuTypes"]
+    # NOTE: stockStatus is a hint, not a filter — the API reports it
+    # inconsistently (GPUs with stockStatus None deploy fine; "Low" ones
+    # sometimes don't). The deploy attempt is the real availability test.
     if args.gpu:
         for g in data:
             if g["id"] == args.gpu:
@@ -149,8 +153,10 @@ def pick_gpu(args) -> dict:
     for i, g in enumerate(top, 1):
         other = g.get("communityPrice") if not community else g.get("securePrice")
         extra = f"  ({'community' if not community else 'secure'}: ${other:.2f})" if other else ""
+        stock = ((g.get("lowestPrice") or {}).get("stockStatus")) or ""
+        stock_note = f"  stock: {stock}" if stock else ""
         log(f"  [{i}] {g['displayName']:<30} {g['memoryInGb']:>3} GB  "
-            f"${_gpu_price(g, community):.2f}/hr{extra}")
+            f"${_gpu_price(g, community):.2f}/hr{extra}{stock_note}")
     if args.yes:
         log(f"  --yes: auto-selected [1] {top[0]['displayName']}")
         choice = 1
