@@ -1,9 +1,0 @@
-{
-  "style": "Deep chill lounge, soft electric piano, deep rounded bass, slow beat, late-night cafe mood",
-  "lyrics": "[Verse]\nMmm… la la…\nHmm…\n\n[Chorus]\nHmm… aha…\nLa la la…",
-  "cot": "full",
-  "seed": 33,
-  "abc": null,
-  "cfg_scale": 1.2,
-  "id": "song"
-}
