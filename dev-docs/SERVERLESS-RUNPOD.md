@@ -431,6 +431,13 @@ scp -P <port> root@<pod-gateway>:/app/output/*.flac ./
 runpodctl pod stop POD_ID                    # GPU released; storage-only billing
 ```
 
+> **Automated version:** `scripts/runpod_remote_batch.py` (cross-platform:
+> Windows 11 / macOS / Linux — ssh/scp are built into Win11 and macOS) implements
+> this whole session — deploy or start pod → upload batch zip → `music-gen
+> batch` → download output → **stop pod in `finally` (always)** — with balance
+> before/after verification (§13). The `runpodctl pod stop` mitigation from
+> §12.3 is built in.
+
 Full lifecycle via CLI (verified against docs.runpod.io/pods/manage-pods):
 
 | Action | CLI |
@@ -463,9 +470,201 @@ programmatic control.
 - **Unattended API-driven generation** (bot/app integration): **serverless wins** —
   native queue, scale-to-zero without discipline, status polling.
 
-The one real pod risk is a forgotten running pod; mitigate by making
-`runpodctl pod stop` part of the session script (a `finally` block).
+The one real pod risk is a forgotten running pod; mitigated by the session
+script's `finally` stop (`runpod_remote_batch.py`, §13).
 
 > Open question: bake weights into the pod image too (image grows ~7 GB, but
 > `pod start` then skips the model download — same reasoning as §5), or keep
 > the current slim image and accept a one-time download per start.
+
+## 13. Session cost verification (balance API)
+
+The pod workflow's one real risk is cost drift (§12.3: a forgotten running
+4090 ≈ $10.56/day). Both session scripts verify cost via the GraphQL balance
+API — read before and after the session.
+
+### 13.1 Balance query
+
+```bash
+curl -s -X POST "https://api.runpod.io/graphql?api_key=${RUNPOD_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+  -d '{"query":"query { myself { clientBalance currentSpendPerHr spendLimit } }"}'
+```
+
+Fields: `clientBalance` (USD), `currentSpendPerHr`, `spendLimit`.
+**Cloudflare gotcha:** the default Python urllib User-Agent is blocked
+(HTTP 1010) — a browser-like `User-Agent` header is required.
+
+### 13.2 Billing lag mitigation
+
+Balance updates settle asynchronously; a naive read right after `pod stop`
+often shows a $0.00 delta. The scripts therefore:
+
+1. Poll `currentSpendPerHr` until it reads **0** (GPU actually released) —
+   up to ~120 s.
+2. Sleep **30 s** for the ledger to settle.
+3. Read the final balance and report the delta.
+
+Caveats: the delta includes *all* account activity during the session (fine
+for solo accounts), and if it still reads $0.00 after a real session, billing
+had not settled — re-check the console a few minutes later.
+
+### 13.3 Session script
+
+`scripts/runpod_remote_batch.py` — one cross-platform Python script (Win11 /
+macOS / Linux; ssh+scp are built into Win11 and macOS, Python 3.10+ is required
+by music-gen anyway). Supersedes the earlier `.ps1`/`.sh` pair.
+
+```
+preflight (RUNPOD_API_KEY, ssh/scp, batch source; dirs are zipped on the fly)
+  → balance BEFORE
+  → GPU pick: cheapest with ≥24 GB VRAM, user confirms (--yes = auto)
+  → deploy pod (podFindAndDeployOnDemand) or start existing (--pod-id)
+  → poll pod.runtime until port 22 is mapped, then TCP-check SSH
+  → scp upload batch.zip
+  → ssh: music-gen batch --zip … -o <remote>/output   (streamed)
+  → scp download output → local output-<timestamp>/
+  → FINALLY: pod stop (always — even on Ctrl+C / failure)
+  → billing settle (§13.2) → balance AFTER → cost report
+    + independent estimate: GPU price × elapsed seconds (works even
+      when the balance hasn't settled)
+```
+
+Usage:
+
+```bash
+export RUNPOD_API_KEY=...                      # required
+
+# Deploy a fresh pod on the cheapest compatible GPU (interactive confirm)
+python scripts/runpod_remote_batch.py batch.zip
+
+# Non-interactive, reuse an existing stopped pod
+python scripts/runpod_remote_batch.py batch_dir/ --yes --pod-id <pod-id>
+
+# Explicit GPU / template / sizes
+python scripts/runpod_remote_batch.py batch.zip --gpu "NVIDIA GeForce RTX 4090" \
+    --template image-gen1.0.0-cu128 --disk 50 --volume 10
+```
+
+Key flags: `--keep-pod` skips the final stop (**NOT recommended** — the script
+prints the forgotten-pod cost warning), `--billing-wait 300` max seconds to
+wait for the charge to post, `--ready-timeout 900` pod boot timeout.
+
+Requirements & notes:
+- SSH key auth must be configured (`SSH_PUBLIC_KEYS` injection — see README).
+- `music-gen` must be installed in the pod template; container disk is cleared
+  on stop, so **baked weights are recommended** (§12.2 open question).
+- Ctrl+C is safe: the stop runs in `finally`, and `batch_report.json` is
+  written incrementally by `music-gen batch`.
+- The balance delta includes *all* account activity during the session; the
+  GPU estimate isolates this pod's cost.
+
+## 13. Session script: `runpod_remote_batch.py` (balance + cost guard)
+
+One-command pod session implementing the §12 workflow, with balance tracking
+before/after and cost guardrails. Implemented as a **single cross-platform
+Python script** (stdlib only) instead of a `.sh`/`.ps1` pair — ssh/scp are
+built into Windows 11 (OpenSSH client optional feature) and macOS, and
+Python 3.10+ is a music-gen requirement anyway. One file, no jq, no
+platform-specific quoting bugs.
+
+### 13.1 Balance query
+
+Account balance, hourly spend, and spend limit come from the GraphQL `myself`
+query (verified live):
+
+```bash
+curl -s -X POST "https://api.runpod.io/graphql?api_key=${RUNPOD_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+  -d '{"query":"query { myself { clientBalance currentSpendPerHr spendLimit } }"}'
+```
+
+> **Gotcha:** Cloudflare blocks the default Python urllib User-Agent with
+> error 1010 — a browser-like UA header is required. (Same trick as the
+> `runpod-balance` skill script.)
+
+Standalone check: `python runpod_remote_batch.py --balance-only`
+
+### 13.2 Billing-lag mitigation
+
+RunPod posts charges **asynchronously** — reading the balance immediately
+after `pod stop` typically shows a $0.00 delta even after an hour of GPU
+time. The script mitigates this in three ways:
+
+1. **Spend-rate gate:** after stopping the pod, poll until
+   `currentSpendPerHr == 0` (up to 2 min) — confirms the GPU is actually
+   released and nothing is still accruing.
+2. **Balance poll window:** poll the balance for up to `--billing-wait`
+   seconds (default 300) until it moves; only then report the delta as
+   settled. If it doesn't move, the report says "(not settled yet)" and
+   suggests re-running `--balance-only` later.
+3. **Independent estimate:** the script measures actual GPU-seconds
+   (deploy → stop) and multiplies by the confirmed GPU's `$/hr`, printing
+   the estimate next to the measured delta. The estimate is available
+   immediately and bounds what the final charge should be.
+
+Caveat: the balance delta includes *all* account activity during the
+session, not just this pod — fine for solo accounts.
+
+### 13.3 Flow
+
+```
+[1/6] balance before (GraphQL myself)
+[2/6] cheapest GPU >= 24 GB VRAM (user confirms; --yes auto-accepts)
+      -> resolve template image-gen1.0.0-cu128 (name -> id via myself.podTemplates)
+      -> deploy (podFindAndDeployOnDemand) or start existing pod (--pod-id)
+      -> poll runtime ports until SSH mapping (private 22 -> public) appears
+[3/6] scp batch.zip -> /workspace/batch.zip
+[4/6] ssh: music-gen batch --zip /workspace/batch.zip -o /workspace/output  (streamed)
+[5/6] scp -r output -> ./output-<timestamp>/
+[6/6] pod stop  <- in finally: runs on success, failure, AND Ctrl+C
+      balance after (spend-rate gate + poll window + estimate)
+```
+
+Pod lifecycle uses the v1 REST endpoints (`POST /pods/{id}/start|stop`,
+Bearer auth); deployment and runtime/ports queries use GraphQL.
+
+### 13.4 Usage
+
+```powershell
+# Windows 11 PowerShell
+$env:RUNPOD_API_KEY = "..."
+python runpod_remote_batch.py batch.zip                # interactive GPU confirm
+python runpod_remote_batch.py batch_dir\ --yes         # zip dir on the fly, auto-cheapest
+python runpod_remote_batch.py batch.zip --pod-id abc   # reuse a stopped pod
+python runpod_remote_batch.py --balance-only
+```
+
+```bash
+# macOS / Linux — identical interface
+export RUNPOD_API_KEY=...
+python3 runpod_remote_batch.py batch.zip
+python3 runpod_remote_batch.py batch_dir/ --yes
+python3 runpod_remote_batch.py --balance-only
+```
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--template` | `image-gen1.0.0-cu128` | Resolved by name; `--template-id` skips lookup |
+| `--gpu` / `--vram` | cheapest ≥ 24 GB | YuE2 needs 24 GB BF16 |
+| `--disk` / `--volume` | 50 / 10 GB | Container/volume disk |
+| `--remote-dir` | `/workspace` | Volume mount — survives pod stop |
+| `--keep-pod` | off | Loud warning: pod keeps billing hourly |
+| `--billing-wait` | 300 s | Balance poll window (§13.2) |
+
+### 13.5 Cost guardrails
+
+- **`finally` stop** — the §12 forgotten-pod risk (~$10.56/day for a 4090)
+  is closed: the pod is stopped on success, failure, and Ctrl+C alike.
+  `--keep-pod` exists but prints a billing warning.
+- **Cheapest-GPU confirmation** — the script queries `gpuTypes`, filters by
+  VRAM, sorts by price, and offers the cheapest for confirmation before
+  deploying anything.
+- **Estimate vs measured** — GPU-seconds × price is computed from the
+  confirmed rate, so the user always has an immediate cost bound even when
+  the balance hasn't settled.
+- **Fail-fast before spend** — batch source is validated locally (zip or
+  `job.json` present) before any pod is deployed; a typo costs $0, not a
+  boot cycle.

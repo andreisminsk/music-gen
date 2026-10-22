@@ -1,0 +1,155 @@
+Title: Create a new Pod
+Link: https://docs.runpod.io/api-reference/pods/POST/pods
+Page: api-reference/pods/POST/pods
+Content: REST Endpoint POST /pods
+Summary: Create a new Pod
+Description: Creates a new [Pod](#/components/schemas/Pod) and optionally deploys it. Review parameters and responses for this Runpod API operation in detail.
+Request body:
+Description: Input for Pod creation.
+Content type: application/json
+- allowedCudaVersions: type enum<string>[]; description If the created Pod is a GPU Pod, a list of acceptable CUDA versions on the [Pod](#/components/schemas/Pod). If not set, any CUDA version is acceptable.
+- allowedCudaVersions[]: type enum<string>; enum 13.0, 12.9, 12.8, 12.7, 12.6, 12.5, 12.4, 12.3, 12.2, 12.1, 12.0, 11.8
+- cloudType: type enum<string>; description Set to SECURE to create the Pod in Secure Cloud. Set to COMMUNITY to create the Pod in Community Cloud. To determine which one suits your needs, see https://docs.runpod.io/pods/overview#pod-types.; enum SECURE, COMMUNITY; default SECURE
+- computeType: type enum<string>; description Set to GPU to create a GPU Pod. Set to CPU to create a CPU Pod. If set to CPU, the Pod will not have a GPU attached and properties related to GPUs such as gpuTypeIds will be ignored. If set to GPU, the Pod will have a GPU attached and properties related to CPUs such as cpuFlavorIds will be ignored.; enum GPU, CPU; default GPU
+- containerDiskInGb: type integer | null; description The amount of disk space, in gigabytes (GB), to allocate on the container disk for the created Pod. The data on the container disk is wiped when the Pod restarts. To persist data across Pod restarts, set volumeInGb to configure the Pod network volume.; default 50
+- containerRegistryAuthId: type string; description Registry credentials ID.
+- countryCodes: type string[]; description A list of country codes where the created Pod can be located. If not set, the Pod can be located in any country.
+- countryCodes[]: type string
+- cpuFlavorIds: type enum<string>[]; description If the created Pod is a CPU Pod, a list of Runpod CPU flavors which can be attached to the Pod. The order of the list determines the order to rent CPU flavors. See cpuFlavorPriority for how the order of the list affects Pod creation.
+- cpuFlavorIds[]: type enum<string>; enum cpu3c, cpu3g, cpu3m, cpu5c, cpu5g, cpu5m
+- cpuFlavorPriority: type enum<string>; description If the created Pod is a CPU Pod, set to availability to respond to current CPU flavor availability. Set to custom to always try to rent CPU flavors in the order specified in cpuFlavorIds.; enum availability, custom; default availability
+- dataCenterIds: type enum<string>[]; description A list of Runpod data center IDs where the created Pod can be located. See `dataCenterPriority` for information on how the order of the list affects Pod creation.; default EU-RO-1, CA-MTL-1, EU-SE-1, US-IL-1, EUR-IS-1, EU-CZ-1, US-TX-3, EUR-IS-2, US-KS-2, US-GA-2, US-WA-1, US-TX-1, CA-MTL-3, EU-NL-1, US-TX-4, US-CA-2, US-NC-1, OC-AU-1, US-DE-1, EUR-IS-3, CA-MTL-2, AP-JP-1, EUR-NO-1, EU-FR-1, US-KS-3, US-GA-1
+- dataCenterIds[]: type enum<string>; enum EU-RO-1, CA-MTL-1, EU-SE-1, US-IL-1, EUR-IS-1, EU-CZ-1, US-TX-3, EUR-IS-2, US-KS-2, US-GA-2, US-WA-1, US-TX-1, CA-MTL-3, EU-NL-1, US-TX-4, US-CA-2, US-NC-1, OC-AU-1, US-DE-1, EUR-IS-3, CA-MTL-2, AP-JP-1, EUR-NO-1, EU-FR-1, US-KS-3, US-GA-1
+- dataCenterPriority: type enum<string>; description Set to availability to respond to current machine availability. Set to custom to always try to rent machines from data centers in the order specified in dataCenterIds.; enum availability, custom; default availability
+- dockerEntrypoint: type string[]; description If specified, overrides the ENTRYPOINT for the Docker image run on the created Pod. If [], uses the ENTRYPOINT defined in the image.
+- dockerEntrypoint[]: type string
+- dockerStartCmd: type string[]; description If specified, overrides the start CMD for the Docker image run on the created Pod. If [], uses the start CMD defined in the image.
+- dockerStartCmd[]: type string
+- env: type object
+- env[]: type string
+- globalNetworking: type boolean; description Set to true to enable global networking for the created Pod. Currently only available for On-Demand GPU Pods on some Secure Cloud data centers.; default false
+- gpuCount: type integer; description If the created Pod is a GPU Pod, the number of GPUs attached to the created Pod.; default 1
+- gpuTypeIds: type enum<string>[]; description If the created Pod is a GPU Pod, a list of Runpod GPU types which can be attached to the created Pod. The order of the list determines the order to rent GPU types. See `gpuTypePriority` for information on how the order of the list affects Pod creation.
+- gpuTypeIds[]: type enum<string>; enum NVIDIA GeForce RTX 4090, NVIDIA A40, NVIDIA RTX A5000, NVIDIA GeForce RTX 5090, NVIDIA H100 80GB HBM3, NVIDIA GeForce RTX 3090, NVIDIA RTX A4500, NVIDIA L40S, NVIDIA H200, NVIDIA L4, NVIDIA RTX 6000 Ada Generation, NVIDIA A100-SXM4-80GB, NVIDIA RTX 4000 Ada Generation, NVIDIA RTX A6000, NVIDIA A100 80GB PCIe, NVIDIA RTX 2000 Ada Generation, NVIDIA RTX A4000, NVIDIA RTX PRO 6000 Blackwell Server Edition, NVIDIA H100 PCIe, NVIDIA H100 NVL, NVIDIA L40, NVIDIA B200, NVIDIA GeForce RTX 3080 Ti, NVIDIA RTX PRO 6000 Blackwell Workstation Edition, NVIDIA GeForce RTX 3080, NVIDIA GeForce RTX 3070, AMD Instinct MI300X OAM, NVIDIA GeForce RTX 4080 SUPER, Tesla V100-PCIE-16GB, Tesla V100-SXM2-32GB, NVIDIA RTX 5000 Ada Generation, NVIDIA GeForce RTX 4070 Ti, NVIDIA RTX 4000 SFF Ada Generation, NVIDIA GeForce RTX 3090 Ti, NVIDIA RTX A2000, NVIDIA GeForce RTX 4080, NVIDIA A30, NVIDIA GeForce RTX 5080, Tesla V100-FHHL-16GB, NVIDIA H200 NVL, Tesla V100-SXM2-16GB, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, NVIDIA A5000 Ada, Tesla V100-PCIE-32GB, NVIDIA  RTX A4500, NVIDIA  A30, NVIDIA GeForce RTX 3080TI, Tesla T4, NVIDIA RTX A30
+- gpuTypePriority: type enum<string>; description If the created Pod is a GPU Pod, set to availability to respond to current GPU type availability. Set to custom to always try to rent GPU types in the order specified in gpuTypeIds.; enum availability, custom; default availability
+- imageName: type string; description The image tag for the container run on the created Pod.
+- interruptible: type boolean; description Set to true to create an interruptible or spot Pod. An interruptible Pod can be rented at a lower cost but can be stopped at any time to free up resources for another Pod. A reserved Pod is rented at a higher cost but runs until it exits or is manually stopped.; default false
+- locked: type boolean; description Set to true to lock a Pod. Locking a Pod disables stopping or resetting the Pod.; default false
+- minDiskBandwidthMBps: type number; description The minimum disk bandwidth, in megabytes per second (MBps), for the created Pod.
+- minDownloadMbps: type number; description The minimum download speed, in megabits per second (Mbps), for the created Pod.
+- minRAMPerGPU: type integer; description If the created Pod is a GPU Pod, the minimum amount of RAM, in gigabytes (GB), allocated to the created Pod for each GPU attached to the Pod.; default 8
+- minUploadMbps: type number; description The minimum upload speed, in megabits per second (Mbps), for the created Pod.
+- minVCPUPerGPU: type integer; description If the created Pod is a GPU Pod, the minimum number of virtual CPUs allocated to the created Pod for each GPU attached to the Pod.; default 2
+- name: type string; description A user-defined name for the created Pod. The name does not need to be unique.; default my pod
+- networkVolumeId: type string; description The unique string identifying the network volume to attach to the created Pod. If attached, a network volume replaces the Pod network volume.
+- ports: type string[]; description A list of ports exposed on the created Pod. Each port is formatted as [port number]/[protocol]. Protocol can be either http or tcp.; default 8888/http,22/tcp
+- ports[]: type string
+- supportPublicIp: type boolean; description If the created Pod is on Community Cloud, set to true if you need the Pod to expose a public IP address. If null, the Pod might not have a public IP address. On Secure Cloud, the Pod will always have a public IP address.
+- templateId: type string; description If the Pod is created with a template, the unique string identifying that template.
+- vcpuCount: type integer; description If the created Pod is a CPU Pod, the number of vCPUs allocated to the Pod.; default 2
+- volumeInGb: type integer | null; description The amount of disk space, in gigabytes (GB), to allocate on the Pod volume for the created Pod. The data on the Pod volume is persisted across Pod restarts. To persist data so that future Pods can access it, create a network volume and set networkVolumeId to attach it to the Pod.; default 20
+- volumeMountPath: type string; description If either a Pod volume or a network volume is attached to a Pod, the absolute path where the network volume will be mounted in the filesystem.; default /workspace
+Responses:
+201: Pod successfully created.
+Content type: application/json
+- adjustedCostPerHr: type number; description The effective cost in Runpod credits per hour of running a Pod, adjusted by active Savings Plans.
+- aiApiId: type string; description Synonym for endpointId (legacy name).
+- consumerUserId: type string; description A unique string identifying the Runpod user who rents a Pod.
+- containerDiskInGb: type integer; description The amount of disk space, in gigabytes (GB), to allocate on the container disk for a Pod. The data on the container disk is wiped when the Pod restarts. To persist data across Pod restarts, set volumeInGb to configure the Pod network volume.
+- containerRegistryAuthId: type string; description If a Pod is created with a container registry auth, the unique string identifying that container registry auth.
+- costPerHr: type number<currency>; description The cost in Runpod credits per hour of running a Pod. Note that the actual cost may be lower if Savings Plans are applied.
+- cpuFlavorId: type string; description If the Pod is a CPU Pod, the unique string identifying the CPU flavor the Pod is running on.
+- desiredStatus: type enum<string>; description The current expected status of a Pod.; enum RUNNING, EXITED, TERMINATED
+- dockerEntrypoint: type string[]; description If specified, overrides the ENTRYPOINT for the Docker image run on the created Pod. If [], uses the ENTRYPOINT defined in the image.
+- dockerEntrypoint[]: type string
+- dockerStartCmd: type string[]; description If specified, overrides the start CMD for the Docker image run on the created Pod. If [], uses the start CMD defined in the image.
+- dockerStartCmd[]: type string
+- endpointId: type string; description If the Pod is a Serverless worker, a unique string identifying the associated endpoint.
+- env: type object
+- env[]: type string
+- gpu: type object
+- gpu.id: type string
+- gpu.count: type integer; description The number of GPUs attached to a Pod.
+- gpu.displayName: type string
+- gpu.securePrice: type number
+- gpu.communityPrice: type number
+- gpu.oneMonthPrice: type number
+- gpu.threeMonthPrice: type number
+- gpu.sixMonthPrice: type number
+- gpu.oneWeekPrice: type number
+- gpu.communitySpotPrice: type number
+- gpu.secureSpotPrice: type number
+- id: type string; description A unique string identifying a [Pod](#/components/schema/Pod).
+- image: type string; description The image tag for the container run on a Pod.
+- interruptible: type boolean; description Describes how a Pod is rented. An interruptible Pod can be rented at a lower cost but can be stopped at any time to free up resources for another Pod. A reserved Pod is rented at a higher cost but runs until it exits or is manually stopped.
+- lastStartedAt: type string; description The UTC timestamp when a Pod was last started.
+- lastStatusChange: type string; description A string describing the last lifecycle event on a Pod.
+- locked: type boolean; description Set to true to lock a Pod. Locking a Pod disables stopping or resetting the Pod.
+- machine: type object; description Information about the machine a Pod is running on (see [Machine](#/components/schemas/Machine)).
+- machine.minPodGpuCount: type integer
+- machine.gpuTypeId: type string
+- machine.gpuType: type object
+- machine.gpuType.id: type string
+- machine.gpuType.count: type integer; description The number of GPUs attached to a Pod.
+- machine.gpuType.displayName: type string
+- machine.gpuType.securePrice: type number
+- machine.gpuType.communityPrice: type number
+- machine.gpuType.oneMonthPrice: type number
+- machine.gpuType.threeMonthPrice: type number
+- machine.gpuType.sixMonthPrice: type number
+- machine.gpuType.oneWeekPrice: type number
+- machine.gpuType.communitySpotPrice: type number
+- machine.gpuType.secureSpotPrice: type number
+- machine.cpuCount: type integer
+- machine.cpuTypeId: type string
+- machine.cpuType: type object
+- machine.cpuType.id: type string
+- machine.cpuType.displayName: type string
+- machine.cpuType.cores: type number
+- machine.cpuType.threadsPerCore: type number
+- machine.cpuType.groupId: type string
+- machine.location: type string
+- machine.dataCenterId: type string
+- machine.diskThroughputMBps: type integer
+- machine.maxDownloadSpeedMbps: type integer
+- machine.maxUploadSpeedMbps: type integer
+- machine.supportPublicIp: type boolean
+- machine.secureCloud: type boolean
+- machine.maintenanceStart: type string
+- machine.maintenanceEnd: type string
+- machine.maintenanceNote: type string
+- machine.note: type string
+- machine.costPerHr: type number
+- machine.currentPricePerGpu: type number
+- machine.gpuAvailable: type integer
+- machine.gpuDisplayName: type string
+- machineId: type string; description A unique string identifying the host machine a Pod is running on.
+- memoryInGb: type number; description The amount of RAM, in gigabytes (GB), attached to a Pod.
+- name: type string; description A user-defined name for the created Pod. The name does not need to be unique.
+- networkVolume: type object; description If a network volume is attached to a Pod, information about the network volume (see [network volume schema](#/components/schemas/NetworkVolume)).
+- networkVolume.id: type string; description A unique string identifying a network volume.
+- networkVolume.name: type string; description A user-defined name for a network volume. The name does not need to be unique.
+- networkVolume.size: type integer; description The amount of disk space, in gigabytes (GB), allocated to a network volume.
+- networkVolume.dataCenterId: type string; description The Runpod data center ID where a network volume is located.
+- portMappings: type object | null; description A mapping of internal ports to public ports on a Pod. For example, { "22": 10341 } means that port 22 on the Pod is mapped to port 10341 and is publicly accessible at [public ip]:10341. If the Pod is still initializing, this mapping is not yet determined and will be empty.
+- portMappings[]: type integer
+- portMappings[]: type integer
+- ports: type string[]; description A list of ports exposed on a Pod. Each port is formatted as [port number]/[protocol]. Protocol can be either http or tcp.
+- ports[]: type string
+- publicIp: type string<ipv4> | null; description The public IP address of a Pod. If the Pod is still initializing, this IP is not yet determined and will be empty.
+- savingsPlans: type object[]; description The list of active Savings Plans applied to a Pod (see [Savings Plans](#/components/schemas/SavingsPlan)). If none are applied, the list is empty.
+- savingsPlans[]: type object
+- savingsPlans[].costPerHr: type number
+- savingsPlans[].endTime: type string
+- savingsPlans[].gpuTypeId: type string
+- savingsPlans[].id: type string
+- savingsPlans[].podId: type string
+- savingsPlans[].startTime: type string
+- slsVersion: type integer; description If the Pod is a Serverless worker, the version of the associated endpoint (see [Endpoint Version](#/components/schemas/Endpoint/version)).
+- templateId: type string; description If a Pod is created with a template, the unique string identifying that template.
+- vcpuCount: type number; description The number of virtual CPUs attached to a Pod.
+- volumeEncrypted: type boolean; description Set to true if the local network volume of a Pod is encrypted. Can only be set when creating a Pod.
+- volumeInGb: type integer; description The amount of disk space, in gigabytes (GB), to allocate on the Pod volume for a Pod. The data on the Pod volume is persisted across Pod restarts. To persist data so that future Pods can access it, create a network volume and set networkVolumeId to attach it to the Pod.
+- volumeMountPath: type string; description If either a Pod volume or a network volume is attached to a Pod, the absolute path where the network volume is mounted in the filesystem.
+400: Invalid input.
+Content type: _mintlify/placeholder

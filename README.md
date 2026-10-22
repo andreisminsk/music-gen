@@ -352,6 +352,41 @@ prompt = get_example("russian_rock")
 
 YuE2 requires an NVIDIA GPU with 24GB+ VRAM. RunPod is the easiest way to get started.
 
+### One-command remote batch (recommended)
+
+`scripts/runpod_remote_batch.py` runs a whole batch session on RunPod from your
+local machine — deploy (or start) a pod, upload the batch, generate, download
+results, and **always stop the pod** (cost guardrail), with balance verification
+before/after:
+
+```bash
+export RUNPOD_API_KEY=...   # https://www.runpod.io/console/user/settings
+
+# Just check your balance
+python scripts/runpod_remote_batch.py --balance-only
+
+# Deploy a fresh pod on the cheapest compatible GPU (interactive confirm)
+python scripts/runpod_remote_batch.py batch.zip
+
+# Non-interactive, reuse an existing stopped pod
+python scripts/runpod_remote_batch.py batch_dir/ --yes --pod-id <pod-id>
+```
+
+What it does:
+- Picks the cheapest GPU with ≥24 GB VRAM (live pricing, user confirms; `--yes` = auto)
+- Deploys using your RunPod template (default: `image-gen1.0.0-cu128`, override with `--template`/`--template-id`)
+- Zips a batch directory on the fly, uploads via scp, runs `music-gen batch` (streamed)
+- Downloads results to `output-<timestamp>/`
+- Stops the pod in a `finally` block — even on Ctrl+C or failure
+- Reports balance before/after plus an independent GPU-cost estimate
+  (billing posts asynchronously; the script waits for it)
+
+Requirements: `RUNPOD_API_KEY`, ssh/scp in PATH (built into Win11 and macOS),
+and a pod template with `music-gen` installed and SSH key injection configured.
+See `dev-docs/SERVERLESS-RUNPOD.md` §12–13 for the design and cost model.
+
+The manual workflow below still works and is useful for interactive sessions.
+
 ### 1. Create a Pod
 
 1. Go to [runpod.io](https://runpod.io) → **Pods** → **Deploy**
