@@ -1,4 +1,6 @@
 name: Docker Image CI
+# Re-registered 2026-10-22: GitHub had marked the workflow state as "deleted"
+# after commit 6c7cc29; a trivial touch re-registers it.
 
 on:
   push:
