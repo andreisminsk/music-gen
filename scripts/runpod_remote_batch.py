@@ -202,6 +202,7 @@ def wait_runtime(pod_id: str, timeout_s: int) -> tuple[str, int]:
     q = (f'query {{ pod(input: {{ podId: "{pod_id}" }}) {{ runtime {{ uptimeInSeconds '
          f'ports {{ ip privatePort publicPort }} }} }} }}')
     deadline = time.time() + timeout_s
+    waited = 0
     while time.time() < deadline:
         try:
             pod = gql(q)["pod"]
@@ -209,10 +210,16 @@ def wait_runtime(pod_id: str, timeout_s: int) -> tuple[str, int]:
             for p in (rt or {}).get("ports") or []:
                 if p["privatePort"] == 22 and p.get("publicPort") and p.get("ip"):
                     return p["ip"], int(p["publicPort"])
+            if rt is None and waited and waited % 120 == 0:
+                log(f"      still booting ({waited // 60} min) — large template "
+                    f"images pull for 15-20+ min on first deploy...")
         except RuntimeError:
             pass  # pod not registered yet
         time.sleep(10)
-    die(f"Pod {pod_id} did not become ready within {timeout_s}s")
+        waited += 10
+    die(f"Pod {pod_id} did not become ready within {timeout_s}s "
+        f"(image pull may still be in progress — check the console, or "
+        f"re-run with --pod-id {pod_id} once it's up)")
 
 
 def wait_ssh(ip: str, port: int, timeout_s: int) -> None:
@@ -315,8 +322,9 @@ def main() -> int:
                     help="Deploy on community cloud (cheaper, interruptible; default: secure)")
     ap.add_argument("--keep-pod", action="store_true",
                     help="Do NOT stop the pod at the end (billed hourly!)")
-    ap.add_argument("--ready-timeout", type=int, default=900,
-                    help="Pod boot timeout s (default: 900)")
+    ap.add_argument("--ready-timeout", type=int, default=1800,
+                    help="Pod boot timeout s (default: 1800 — first deploy pulls "
+                         "a ~22 GB template image, which can take 15-20+ min)")
     ap.add_argument("--ssh-timeout", type=int, default=300, help="SSH reach timeout s")
     ap.add_argument("--billing-wait", type=int, default=300,
                     help="Max s to wait for the balance to post the charge (default: 300)")
