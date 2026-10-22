@@ -8,8 +8,9 @@ macOS, and Python 3.10+ is required by music-gen anyway.
 Flow:
   balance before -> cheapest compatible GPU (user confirms) -> deploy or start
   pod -> wait for SSH -> upload batch zip -> music-gen batch (streamed) ->
-  download output -> stop pod (ALWAYS, even on Ctrl+C) -> balance after
-  (billing-lag aware, with an independent cost estimate).
+  download output -> terminate pod (ALWAYS, even on Ctrl+C; --no-terminate
+  just stops) -> balance after (billing-lag aware, with an independent cost
+  estimate — printed even on failure/timeout).
 
 Requirements:
   RUNPOD_API_KEY env var (https://www.runpod.io/console/user/settings)
@@ -250,6 +251,16 @@ def stop_pod(pod_id: str) -> None:
     gql('mutation { podStop(input: { podId: "%s" }) { id desiredStatus } }' % pod_id)
 
 
+def terminate_pod(pod_id: str) -> None:
+    """Terminate a pod (deletes it — no storage billing, pod cannot be reused)."""
+    try:
+        rest("terminate", pod_id)
+        return
+    except Exception as e:  # noqa: BLE001
+        log(f"  REST terminate failed ({e}); trying GraphQL podTerminate...")
+    gql('mutation { podTerminate(input: { podId: "%s" }) { id } }' % pod_id)
+
+
 # ------------------------------------------------------------------- helpers
 
 
@@ -292,7 +303,10 @@ def wait_settled(before: float, timeout_s: int) -> tuple[float, bool]:
         _, spend, _ = get_balance()
         if spend == 0:
             break
+        log(f"  waiting for GPU release (spend/hr ${spend:.2f})...")
         time.sleep(10)
+    log("  waiting for the charge to post to the balance (up to "
+        f"{timeout_s}s; RunPod posts billing asynchronously)...")
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         after, _, _ = get_balance()
@@ -328,6 +342,11 @@ def main() -> int:
                     help="Deploy on community cloud (cheaper, interruptible; default: secure)")
     ap.add_argument("--keep-pod", action="store_true",
                     help="Do NOT stop the pod at the end (billed hourly!)")
+    ap.add_argument("--no-terminate", action="store_true",
+                    help="Stop the pod after the batch instead of terminating "
+                         "(default: terminate — no storage billing, pod deleted; "
+                         "a stopped pod can be reused via --pod-id but accrues "
+                         "storage billing)")
     ap.add_argument("--ready-timeout", type=int, default=1800,
                     help="Pod boot timeout s (default: 1800 — first deploy pulls "
                          "a ~22 GB template image, which can take 15-20+ min)")
@@ -377,6 +396,7 @@ def main() -> int:
     t0 = time.time()
 
     failure: Exception | None = None
+    rc = 1  # if the ssh step never runs (e.g. upload failed), report failure
     remote = args.remote_dir.rstrip("/")
     try:
         ip, port = wait_runtime(pod_id, args.ready_timeout)
@@ -411,33 +431,42 @@ def main() -> int:
         if args.keep_pod:
             log(f"[6/6] WARNING: --keep-pod set — pod {pod_id} is STILL RUNNING (billed hourly).")
         else:
-            log(f"[6/6] Stopping pod {pod_id} ...")
+            action = "Stopping" if args.no_terminate else "Terminating"
+            log(f"[6/6] {action} pod {pod_id} ...")
             try:
-                stop_pod(pod_id)
+                (stop_pod if args.no_terminate else terminate_pod)(pod_id)
             except Exception as e:  # noqa: BLE001 — must not mask the original error
-                log(f"WARNING: pod stop failed ({e}) — STOP IT MANUALLY in the RunPod "
-                    f"console to avoid idle charges!")
+                log(f"WARNING: pod {action.lower()} failed ({e}) — HANDLE IT MANUALLY "
+                    f"in the RunPod console to avoid charges!")
 
-    # Balance after — billing-lag aware
-    est = None
-    if not args.pod_id:
-        est = gpu["_price"] * gpu_seconds / 3600
-    after, settled = wait_settled(bal_before, args.billing_wait)
-    delta = bal_before - after
+        # Balance after — ALWAYS printed, even on timeout/failure/Ctrl+C.
+        # Lives inside finally: it used to run after the try block and was
+        # skipped when die() raised SystemExit on the pod-ready timeout —
+        # the missing final-balance bug.
+        try:
+            est = None
+            if not args.pod_id:
+                est = gpu["_price"] * gpu_seconds / 3600
+            after, settled = wait_settled(bal_before, args.billing_wait)
+            delta = bal_before - after
 
-    log("\n" + "=" * 52)
-    log(f"Balance before:  ${bal_before:.2f}")
-    log(f"Balance after:   ${after:.2f}"
-        + ("" if settled else "   (not settled yet)"))
-    log(f"Session cost:    ${delta:.2f}"
-        + ("" if settled else "   (partial — RunPod posts billing asynchronously)"))
-    if est is not None:
-        log(f"GPU estimate:    ${est:.2f}   ({gpu['displayName']} @ "
-            f"${gpu['_price']:.2f}/hr x {gpu_seconds / 60:.0f} min)")
-    if not settled:
-        log("NOTE: re-run `python runpod_remote_batch.py --balance-only` in a few "
-            "minutes for the final number.")
-    log("=" * 52)
+            log("\n" + "=" * 52)
+            log(f"Balance before:  ${bal_before:.2f}")
+            log(f"Balance after:   ${after:.2f}"
+                + ("" if settled else "   (not settled yet)"))
+            log(f"Session cost:    ${delta:.2f}"
+                + ("" if settled else "   (partial — RunPod posts billing asynchronously)"))
+            if est is not None:
+                log(f"GPU estimate:    ${est:.2f}   ({gpu['displayName']} @ "
+                    f"${gpu['_price']:.2f}/hr x {gpu_seconds / 60:.0f} min)")
+            if not settled:
+                log("NOTE: re-run `python scripts/runpod_remote_batch.py --balance-only` "
+                    "in a few minutes for the final number.")
+            log("=" * 52)
+        except (Exception, SystemExit) as e:  # gql() die()s on API errors
+            log(f"WARNING: could not fetch the final balance — "
+                f"re-run `python scripts/runpod_remote_batch.py --balance-only` "
+                f"in a few minutes. ({e or 'API error'})")
 
     if failure:
         return 1
