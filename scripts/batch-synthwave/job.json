@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "defaults": {
+    "cot": "full",
+    "cfg_scale": 1.2
+  },
+  "jobs": [
+    {
+      "output_file": "synthwave-neon-drive.flac",
+      "style": "1980s synthwave, analog sawtooth arpeggios, gated reverb drums, punchy LinnDrum snare, nostalgic neon drive, airy wordless female vocalizations",
+      "lyrics": "[Verse]\nHmm… aha…\nOhhh la la…\nMmm hmm hmm…\n\n[Chorus]\nLa la la… ohhh…\nHmm ha hmm…\nOhhh…",
+      "seed": 1984
+    },
+    {
+      "output_file": "synthwave-outrun-midnight.flac",
+      "style": "1980s outrun synthwave, dark pulsing bassline, retro DX7 electric piano, drum machine, midnight highway mood, breathy wordless vocalizations",
+      "lyrics": "[Verse]\nOhhh… hmm…\nAha… la la…\nHmm hmm hmm…\n\n[Chorus]\nMmm… ohhh ohhh…\nLa la… aha…",
+      "seed": 1985
+    },
+    {
+      "output_file": "synthwave-chrome-dream.flac",
+      "style": "1980s dreamwave, lush analog pads, shimmering chorus-guitar synth, soft gated snare, melancholic chrome romance, dreamy wordless vocalizations",
+      "lyrics": "[Verse]\nMmm… ohhh…\nLa la… ha ha…\nHmm… aha…\n\n[Chorus]\nOhhh… la la la…\nHmm mmm…",
+      "seed": 1986
+    },
+    {
+      "output_file": "synthwave-cyber-city.flac",
+      "style": "1980s cyberpunk synthwave, detuned Juno pads, gritty FM bass, mechanical drum machine, rainy neon city, cool detached wordless vocalizations",
+      "lyrics": "[Verse]\nHmm… ha ha…\nOhhh… mmm…\nLa la hmm…\n\n[Chorus]\nAha… ohhh…\nDoo doo… la la…",
+      "seed": 1987
+    },
+    {
+      "output_file": "synthwave-vice-sunset.flac",
+      "style": "1980s Miami vice synthwave, warm brass-synth stabs, slap bass, tropical gated drums, pastel sunset boardwalk, smooth wordless vocalizations",
+      "lyrics": "[Verse]\nLa la la… hmm…\nOhhh aha…\nMmm… ha…\n\n[Chorus]\nSha la la… hmm…\nOhhh… aha aha…",
+      "seed": 1988
+    },
+    {
+      "output_file": "synthwave-star-voyager.flac",
+      "style": "1980s space synthwave, cosmic string pads, sweeping lead synth, slow massive gated reverb, starship voyage wonder, ethereal wordless vocalizations",
+      "lyrics": "[Verse]\nOhhh… mmm…\nLa… la… hmm…\nAha… ohhh…\n\n[Chorus]\nHmm hmm… la la…\nOhhh… mmm hmm…",
+      "seed": 1989
+    },
+    {
+      "output_file": "synthwave-arcade-fever.flac",
+      "style": "1980s synthpop arcade, bright chiptune-flavored leads, bouncy octave bass, driving 808 beat, arcade fever energy, playful wordless vocalizations",
+      "lyrics": "[Verse]\nHa ha… hmm…\nLa la la… ohhh…\nDoo doo… aha…\n\n[Chorus]\nOhhh la la…\nHmm ha ha… mmm…",
+      "seed": 1990
+    },
+    {
+      "output_file": "synthwave-dark-pursuit.flac",
+      "style": "1980s darksynth, menacing distorted bass, tense ostinato arpeggio, hybrid orchestral hits, chase thriller tension, dark wordless vocalizations",
+      "lyrics": "[Verse]\nHmm… ohhh…\nAhh… ahh…\nMmm ha…\n\n[Chorus]\nOhhh… la la…\nHmm hmm… aha…",
+      "seed": 1991
+    },
+    {
+      "output_file": "synthwave-heroic-dawn.flac",
+      "style": "1980s heroic synthwave, soaring brass-lead synth, triumphant synth power chords, epic gated drums, dawn montage, uplifting wordless vocalizations",
+      "lyrics": "[Verse]\nOhhh… aha aha…\nLa la… hmm…\nHa… ohhh…\n\n[Chorus]\nHmm hmm… ohhh…\nLa la la… aha…",
+      "seed": 1992
+    },
+    {
+      "output_file": "synthwave-rose-slowdance.flac",
+      "style": "1980s slow-dance synthwave ballad, tender DX7 Rhodes, soft choir pad, gentle drum machine, prom night slow dance, tender wordless vocalizations",
+      "lyrics": "[Verse]\nMmm… ohhh…\nLa la… hmm hmm…\nAha… mmm…\n\n[Chorus]\nOhhh… la la la…\nHmm… aha…",
+      "seed": 1993
+    }
+  ]
+}
